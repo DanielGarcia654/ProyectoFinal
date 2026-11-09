@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f250bfd4481fc94988b591d878c0544, type: 3}
+  m_Name: N_Nitrogeno
+  m_EditorClassIdentifier: Assembly-CSharp::ElementoData
+  targetName: 04_n_nitrogeno
+  simbolo: N
+  nombre: "Nitr\xF3geno"
+  apodo: Casi todo el aire que respiras
+  numeroAtomico: 7
+  neutrones: 7
+  masaAtomica: 14.007
+  categoria: No metal
+  electronesPorCapa: 0200000005000000
+  dato: "Forma el 78 % del aire. Las plantas lo necesitan para crecer, por eso est\xE1
+    en los fertilizantes."
+  color: {r: 0.078431375, g: 0.50980395, b: 0.23137255, a: 1}

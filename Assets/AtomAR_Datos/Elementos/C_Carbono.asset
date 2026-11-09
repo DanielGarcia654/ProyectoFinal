@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f250bfd4481fc94988b591d878c0544, type: 3}
+  m_Name: C_Carbono
+  m_EditorClassIdentifier: Assembly-CSharp::ElementoData
+  targetName: 03_c_carbono
+  simbolo: C
+  nombre: Carbono
+  apodo: El ladrillo de la vida
+  numeroAtomico: 6
+  neutrones: 6
+  masaAtomica: 12.011
+  categoria: No metal
+  electronesPorCapa: 0200000004000000
+  dato: "Todos los seres vivos est\xE1n hechos de carbono. El grafito de tu l\xE1piz
+    y un diamante son el mismo elemento, solo acomodado distinto."
+  color: {r: 0.34117648, g: 0.35686275, b: 0.40784314, a: 1}

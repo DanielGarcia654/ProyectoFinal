@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f250bfd4481fc94988b591d878c0544, type: 3}
+  m_Name: Na_Sodio
+  m_EditorClassIdentifier: Assembly-CSharp::ElementoData
+  targetName: 06_na_sodio
+  simbolo: Na
+  nombre: Sodio
+  apodo: Un metal tan blando que se corta con cuchillo
+  numeroAtomico: 11
+  neutrones: 12
+  masaAtomica: 22.990
+  categoria: Metal alcalino
+  electronesPorCapa: 020000000800000001000000
+  dato: "Unido al cloro forma la sal de mesa (NaCl). Tus nervios lo usan para mandar
+    mensajes a tus m\xFAsculos."
+  color: {r: 0.91764706, g: 0.34117648, b: 0.043137256, a: 1}
