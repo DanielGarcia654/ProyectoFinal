@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QCARConfig>
+  <Tracking>
+    <ImageTarget name="10_au_oro" size="1.000000 1.000000" />
+    <ImageTarget name="09_fe_hierro" size="1.000000 1.000000" />
+    <ImageTarget name="08_ca_calcio" size="1.000000 1.000000" />
+    <ImageTarget name="07_cl_cloro" size="1.000000 1.000000" />
+    <ImageTarget name="06_na_sodio" size="1.000000 1.000000" />
+    <ImageTarget name="05_o_oxigeno" size="1.000000 1.000000" />
+    <ImageTarget name="04_n_nitrogeno" size="1.000000 1.000000" />
+    <ImageTarget name="03_c_carbono" size="1.000000 1.000000" />
+    <ImageTarget name="02_he_helio" size="1.000000 1.000000" />
+    <ImageTarget name="01_h_hidrogeno" size="1.000000 1.000000" />
+  </Tracking>
+</QCARConfig>
