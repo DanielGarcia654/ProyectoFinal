@@ -19,6 +19,8 @@ public class ElementoData : ScriptableObject
     [Tooltip("Electrones por capa según el modelo de Bohr")]
     public int[] electronesPorCapa;
     [TextArea(2, 5)] public string dato;
-    [Tooltip("Color CPK del elemento (convención de los libros de química)")]
+    [Tooltip("Pregunta del Reto cuya respuesta es este elemento")]
+    public string preguntaUso;
+    [Tooltip("Color del elemento (tomado de su tarjeta)")]
     public Color color = Color.white;
 }

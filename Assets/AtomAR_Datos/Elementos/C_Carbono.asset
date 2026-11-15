@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 0200000004000000
   dato: "Todos los seres vivos est\xE1n hechos de carbono. El grafito de tu l\xE1piz
     y un diamante son el mismo elemento, solo acomodado distinto."
+  preguntaUso: "\xBFDe qu\xE9 elemento est\xE1n hechos el grafito y el diamante?"
   color: {r: 0.34117648, g: 0.35686275, b: 0.40784314, a: 1}

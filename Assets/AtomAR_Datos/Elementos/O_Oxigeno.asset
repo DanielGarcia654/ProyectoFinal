@@ -23,4 +23,6 @@ MonoBehaviour:
   electronesPorCapa: 0200000006000000
   dato: "Forma el 21 % del aire. Tus c\xE9lulas lo usan para sacar energ\xEDa de
     la comida, y sin \xE9l nada puede arder."
+  preguntaUso: "\xBFQu\xE9 elemento usan tus c\xE9lulas para sacar energ\xEDa de
+    la comida?"
   color: {r: 0.03529412, g: 0.5647059, b: 0.69803923, a: 1}

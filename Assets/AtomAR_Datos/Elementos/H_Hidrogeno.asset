@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 01000000
   dato: "Las estrellas, como el Sol, est\xE1n hechas sobre todo de hidr\xF3geno.
     En la Tierra lo encuentras en el agua: H<sub>2</sub>O."
+  preguntaUso: "\xBFDe qu\xE9 elemento est\xE1n hechas sobre todo las estrellas?"
   color: {r: 0.14901961, g: 0.3882353, b: 0.91764706, a: 1}

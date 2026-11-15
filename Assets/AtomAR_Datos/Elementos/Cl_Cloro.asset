@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 020000000800000007000000
   dato: Se usa para potabilizar el agua y desinfectar albercas. Unido al sodio forma
     la sal de mesa.
+  preguntaUso: "\xBFQu\xE9 elemento se usa para desinfectar el agua de las albercas?"
   color: {r: 0.41960785, g: 0.6666667, b: 0.07058824, a: 1}

@@ -227,15 +227,16 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         }
         grupoContenido.alpha = contenidoA;
 
-        // Hoja
+        // Hoja (solo se ve en el modo Explorar)
+        bool enModo = AppAtomAR.Modo == ModoApp.Explorar, ver = mostrando && enModo;
         if (!arrastrando)
         {
-            float objetivo = !mostrando ? PosOculta() : expandido ? PosExpandida() : PosCompacta();
-            y = Mathf.SmoothDamp(y, objetivo, ref vy, mostrando ? respuestaEntrada : respuestaSalida, Mathf.Infinity, dt);
+            float objetivo = !ver ? PosOculta() : expandido ? PosExpandida() : PosCompacta();
+            y = Mathf.SmoothDamp(y, objetivo, ref vy, ver ? respuestaEntrada : respuestaSalida, Mathf.Infinity, dt);
         }
         hoja.anchoredPosition = new Vector2(hoja.anchoredPosition.x, y);
-        grupoHoja.alpha = Mathf.SmoothDamp(grupoHoja.alpha, mostrando ? 1f : 0f, ref vAlpha, mostrando ? 0.06f : 0.04f, Mathf.Infinity, dt);
-        grupoHoja.blocksRaycasts = mostrando;
+        grupoHoja.alpha = Mathf.SmoothDamp(grupoHoja.alpha, ver ? 1f : 0f, ref vAlpha, ver ? 0.06f : 0.04f, Mathf.Infinity, dt);
+        grupoHoja.blocksRaycasts = ver;
 
         giroMas = Mathf.SmoothDamp(giroMas, expandido ? 45f : 0f, ref vGiro, 0.07f, Mathf.Infinity, dt);
         if (iconoMas) iconoMas.localRotation = Quaternion.Euler(0f, 0f, -giroMas);
@@ -251,7 +252,7 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         ActualizarSelector(dt);
 
-        bool buscar = !mostrando && visibles.Count == 0 && ahora - sinTarjetaDesde > 0.6f;
+        bool buscar = enModo && !mostrando && visibles.Count == 0 && ahora - sinTarjetaDesde > 0.6f;
         if (escaner)
         {
             escA = Mathf.SmoothDamp(escA, buscar ? 1f : 0f, ref vEsc, buscar ? 0.12f : 0.04f, Mathf.Infinity, dt);
@@ -268,7 +269,7 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     {
         if (!selector || pastillas == null) return;
         var lista = visibles.Where(v => v && v.datos).OrderBy(v => v.datos.numeroAtomico).Take(pastillas.Length).ToList();
-        bool mostrar = mostrando && lista.Count > 1;
+        bool mostrar = mostrando && lista.Count > 1 && AppAtomAR.Modo == ModoApp.Explorar;
 
         if (!lista.SequenceEqual(enPastillas))
         {

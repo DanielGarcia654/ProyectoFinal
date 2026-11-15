@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 02000000
   dato: "Es tan ligero que escapa de la atm\xF3sfera al espacio. Tambi\xE9n se usa
     para enfriar los imanes de las m\xE1quinas de resonancia magn\xE9tica."
+  preguntaUso: "\xBFQu\xE9 gas hace flotar los globos?"
   color: {r: 0.84313726, g: 0.15686275, b: 0.4627451, a: 1}

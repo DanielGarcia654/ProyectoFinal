@@ -10,7 +10,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public static class AtomARUIBuilder
+public static partial class AtomARUIBuilder
 {
     const string DatosDir = "Assets/AtomAR_Datos/Elementos";
     const string UIDir = "Assets/AtomAR_UI";
@@ -70,7 +70,7 @@ public static class AtomARUIBuilder
     }
 
     // ───────────────────────── Interfaz ─────────────────────────
-    [MenuItem("AtomAR/Montar interfaz")]
+    // Base del Modo Explorar; el menú "AtomAR > Montar interfaz" está en AtomARAppBuilder.cs y llama a este método
     public static void MontarInterfaz()
     {
         CrearDatos();

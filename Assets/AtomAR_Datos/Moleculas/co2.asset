@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fe0f857d7d5a124b94816f039726a43, type: 3}
+  m_Name: co2
+  m_EditorClassIdentifier: Assembly-CSharp::MoleculaData
+  id: co2
+  nombre: "Di\xF3xido de carbono"
+  formula: CO<sub>2</sub>
+  simboloA: C
+  cantidadA: 1
+  simboloB: O
+  cantidadB: 2
+  ecuacionReal: "C + O<sub>2</sub> \u2192 CO<sub>2</sub>"
+  dato: "Lo sacas cada vez que exhalas y las plantas lo usan para fabricar su alimento.
+    Tambi\xE9n es el gas de las burbujas del refresco."
+  color: {r: 0.47843137, g: 0.50980395, b: 0.6, a: 1}
+  modelo: {fileID: 919132149155446097, guid: 2ba4deef7f700ed4ebe7fa8cd6ae50f0, type: 3}

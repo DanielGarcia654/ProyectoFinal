@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 020000000800000012000000200000001200000001000000
   dato: "No pierde su brillo con el tiempo, por eso se usa en joyer\xEDa y en los
     contactos de celulares y computadoras."
+  preguntaUso: "\xBFQu\xE9 metal no se oxida y se usa en joyer\xEDa?"
   color: {r: 0.78431374, g: 0.5254902, b: 0.05882353, a: 1}

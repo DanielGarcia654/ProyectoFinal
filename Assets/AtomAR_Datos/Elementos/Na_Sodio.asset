@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 020000000800000001000000
   dato: "Unido al cloro forma la sal de mesa (NaCl). Tus nervios lo usan para mandar
     mensajes a tus m\xFAsculos."
+  preguntaUso: "\xBFQu\xE9 metal forma la sal de mesa junto con el cloro?"
   color: {r: 0.91764706, g: 0.34117648, b: 0.043137256, a: 1}

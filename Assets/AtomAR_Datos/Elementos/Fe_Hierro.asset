@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 02000000080000000e00000002000000
   dato: "Es el ingrediente principal del acero. En tu sangre, la hemoglobina usa
     hierro para llevar ox\xEDgeno a todo tu cuerpo."
+  preguntaUso: "\xBFQu\xE9 metal usa tu sangre para llevar ox\xEDgeno?"
   color: {r: 0.5803922, g: 0.21960784, b: 0.07450981, a: 1}

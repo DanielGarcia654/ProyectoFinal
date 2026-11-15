@@ -23,4 +23,5 @@ MonoBehaviour:
   electronesPorCapa: 02000000080000000800000002000000
   dato: "Hace fuertes tus huesos y dientes. Est\xE1 en la leche, en las tortillas
     de ma\xEDz nixtamalizado y en el cemento."
+  preguntaUso: "\xBFQu\xE9 elemento hace fuertes tus huesos y dientes?"
   color: {r: 0.8627451, g: 0.7764706, b: 0.627451, a: 1}
