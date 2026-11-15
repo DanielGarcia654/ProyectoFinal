@@ -1,10 +1,10 @@
 // AtomAR - Controla en qué modo está la app y qué pantallas se ven.
-//   Inicio   → pantalla con los tres modos y el avance de cada uno
+//   Inicio   → recorrido con los tres modos y el avance de cada uno
 //   Explorar → cámara + carta del elemento (PanelElemento)
 //   Combinar → cámara + panel para armar moléculas (ModoCombinar)
 //   Reto     → preguntas e insignias, sin cámara (Quiz)
-// Los tres modos están abiertos desde el principio; el orden sugerido se marca con "Empieza aquí".
-// La primera vez que se entra a un modo se muestra su tutorial; el botón "?" lo vuelve a abrir.
+// Ningún modo está bloqueado: el inicio solo marca con luz cuál conviene seguir, y en la barra superior
+// hay un botón para saltar al siguiente modo sin volver al inicio. Al completar un modo aparece la celebración.
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -20,25 +20,34 @@ public class AppAtomAR : MonoBehaviour
     [Header("Pantallas")]
     public FundidoUI pantallaInicio;
     public FundidoUI barra, pantallaReto;
-    public Tutorial tutorial;
+    public GuiaVisual guia;
+    public Celebracion celebracion;
     public Quiz quiz;
 
-    [Header("Inicio")]
-    public Button botonExplorar;
-    public Button botonCombinar, botonReto, botonAyudaInicio;
-    public TMP_Text progresoExplorar, progresoCombinar, progresoReto;
-    public GameObject chipEmpieza;
+    [Header("Inicio (en orden: Explorar, Combinar, Reto)")]
+    public Button[] botonesModo;
+    public TMP_Text[] progresos;
+    public AnilloUI[] anillos;
+    public CanvasGroup[] halos;
+    public GameObject[] etiquetasSigue;
 
     [Header("Barra superior")]
     public Button botonAtras;
-    public Button botonAyuda;
-    public TMP_Text tituloBarra;
+    public Button botonAyuda, botonSiguiente;
+    public TMP_Text tituloBarra, siguienteTexto;
+    public Image siguienteMarco, siguienteHaloImagen;
+    public CanvasGroup siguienteHalo;
     public GameObject pastillaColeccion, pastillaMoleculas;
 
+    static readonly ModoApp[] Orden = { ModoApp.Explorar, ModoApp.Combinar, ModoApp.Reto };
     static readonly Color Cian = new(0.18f, 0.90f, 1f), Rojo = new(0.95f, 0.27f, 0.31f), Oro = new(1f, 0.78f, 0.24f);
     static readonly Color TintaOscura = new(0.08f, 0.09f, 0.20f);
+    const string ClaveElementos = "AtomAR.celebrado.elementos", ClaveMoleculas = "AtomAR.celebrado.moleculas";
 
-    /// Color que identifica a cada modo (el mismo en inicio, tutorial y botones).
+    int recomendado;
+    float esperaLogro = -1f;
+
+    /// Color que identifica a cada modo.
     public static Color ColorModo(ModoApp m) => m == ModoApp.Combinar ? Rojo : m == ModoApp.Reto ? Oro : Cian;
 
     /// Texto oscuro sobre colores claros y blanco sobre colores oscuros.
@@ -50,16 +59,22 @@ public class AppAtomAR : MonoBehaviour
 
     public static void Ir(ModoApp modo) { if (instancia) instancia.Cambiar(modo, false); }
 
+    public static void OlvidarLogros() { PlayerPrefs.DeleteKey(ClaveElementos); PlayerPrefs.DeleteKey(ClaveMoleculas); }
+
+    static ModoApp Siguiente(ModoApp m) => m == ModoApp.Explorar ? ModoApp.Combinar : m == ModoApp.Combinar ? ModoApp.Reto : ModoApp.Explorar;
+
+    static bool Completo(ModoApp m) =>
+        (m == ModoApp.Explorar && Coleccion.Cantidad >= Coleccion.TotalElementos) ||
+        (m == ModoApp.Combinar && Coleccion.Moleculas >= Coleccion.TotalMoleculas);
+
     void Awake()
     {
         instancia = this;
         Modo = ModoApp.Inicio;
-        botonExplorar.onClick.AddListener(() => Cambiar(ModoApp.Explorar, false));
-        botonCombinar.onClick.AddListener(() => Cambiar(ModoApp.Combinar, false));
-        botonReto.onClick.AddListener(() => Cambiar(ModoApp.Reto, false));
+        for (int i = 0; i < botonesModo.Length; i++) { var m = Orden[i]; botonesModo[i].onClick.AddListener(() => Cambiar(m, false)); }
         botonAtras.onClick.AddListener(Atras);
-        botonAyuda.onClick.AddListener(() => tutorial.Mostrar(Modo));
-        botonAyudaInicio.onClick.AddListener(() => tutorial.Mostrar(ModoApp.Inicio));
+        botonAyuda.onClick.AddListener(() => guia.Mostrar(Modo, true));
+        botonSiguiente.onClick.AddListener(() => Cambiar(Siguiente(Modo), false));
     }
 
     void Start() => Cambiar(ModoApp.Inicio, true);
@@ -68,14 +83,39 @@ public class AppAtomAR : MonoBehaviour
 
     void Update()
     {
-        // Botón "atrás" de Android
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Atras();
+        float dt = Time.unscaledDeltaTime, pulso = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 3.2f);
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Atras();       // botón "atrás" de Android
+
+        // En el inicio se ilumina el modo que conviene seguir
+        for (int i = 0; i < halos.Length; i++)
+            halos[i].alpha = Mathf.MoveTowards(halos[i].alpha, i == recomendado ? 0.30f + 0.35f * pulso : 0f, dt * 3f);
+
+        // Si el modo actual ya está completo, el botón para pasar al siguiente se ilumina
+        siguienteHalo.alpha = Mathf.MoveTowards(siguienteHalo.alpha, Completo(Modo) ? 0.35f + 0.5f * pulso : 0f, dt * 3f);
+
+        RevisarLogros(dt);
+    }
+
+    // Celebra una sola vez cuando se juntan los 10 elementos o las 4 moléculas
+    void RevisarLogros(float dt)
+    {
+        if (celebracion.Abierta) return;
+        bool elementos = Modo == ModoApp.Explorar && Completo(Modo) && PlayerPrefs.GetInt(ClaveElementos, 0) == 0;
+        bool moleculas = Modo == ModoApp.Combinar && Completo(Modo) && PlayerPrefs.GetInt(ClaveMoleculas, 0) == 0;
+        if (!elementos && !moleculas) { esperaLogro = -1f; return; }
+        if (esperaLogro < 0f) esperaLogro = elementos ? 2.2f : 3.4f;      // deja ver primero el átomo o la molécula recién logrados
+        esperaLogro -= dt;
+        if (esperaLogro > 0f) return;
+        esperaLogro = -1f;
+        PlayerPrefs.SetInt(elementos ? ClaveElementos : ClaveMoleculas, 1); PlayerPrefs.Save();
+        celebracion.Mostrar(elementos);
     }
 
     void Atras()
     {
-        if (tutorial.Abierto) { tutorial.Cerrar(); return; }
-        if (Modo == ModoApp.Reto && quiz.Retroceder()) return;      // de una ronda vuelve a la portada del Reto
+        if (celebracion.Abierta) { celebracion.Cerrar(); return; }
+        if (GuiaVisual.Activa) { guia.Cerrar(true); return; }
+        if (Modo == ModoApp.Reto && quiz.Retroceder()) return;          // de una ronda vuelve a la portada del Reto
         if (Modo != ModoApp.Inicio) Cambiar(ModoApp.Inicio, false);
     }
 
@@ -85,24 +125,42 @@ public class AppAtomAR : MonoBehaviour
         pantallaInicio.Mostrar(modo == ModoApp.Inicio, inmediato);
         barra.Mostrar(modo != ModoApp.Inicio, inmediato);
         pantallaReto.Mostrar(modo == ModoApp.Reto, inmediato);
-
-        tituloBarra.text = modo.ToString();
         pastillaColeccion.SetActive(modo == ModoApp.Explorar);
         pastillaMoleculas.SetActive(modo == ModoApp.Combinar);
-        // en el Reto no hay pastilla de avance: el botón de ayuda se va a la orilla
-        ((RectTransform)botonAyuda.transform).anchoredPosition = new Vector2(modo == ModoApp.Reto ? -40f : -292f, -36f);
+
+        bool conCamara = modo == ModoApp.Explorar || modo == ModoApp.Combinar;
+        botonAyuda.gameObject.SetActive(conCamara);
+        if (conCamara && !GuiaVisual.Vista(modo)) guia.Mostrar(modo, false);      // primera vez: guía animada
+        else guia.Cerrar(false);
 
         if (modo == ModoApp.Inicio) RefrescarInicio();
+        else PintarBarra(modo);
         if (modo == ModoApp.Reto) quiz.Abrir();
-        if (modo != ModoApp.Inicio && !Tutorial.Visto(modo)) tutorial.Mostrar(modo);
+    }
+
+    void PintarBarra(ModoApp modo)
+    {
+        tituloBarra.text = modo.ToString();
+        var sig = Siguiente(modo); Color c = ColorModo(sig);
+        siguienteTexto.text = "Ir a " + sig;
+        siguienteTexto.color = c; siguienteMarco.color = c; siguienteHaloImagen.color = c;
+        // el botón va pegado al título, que cambia de ancho según el modo
+        tituloBarra.ForceMeshUpdate(); siguienteTexto.ForceMeshUpdate();
+        var rt = (RectTransform)botonSiguiente.transform;
+        rt.anchoredPosition = new Vector2(144f + tituloBarra.preferredWidth + 26f, rt.anchoredPosition.y);
+        rt.sizeDelta = new Vector2(siguienteTexto.preferredWidth + 52f, rt.sizeDelta.y);
     }
 
     void RefrescarInicio()
     {
         int e = Coleccion.Cantidad, m = Coleccion.Moleculas, p = ProgresoQuiz.Puntos;
-        progresoExplorar.text = $"{e} de {Coleccion.TotalElementos} elementos";
-        progresoCombinar.text = $"{m} de {Coleccion.TotalMoleculas} moléculas";
-        progresoReto.text = p == 0 ? "Aún sin puntos" : $"{p} puntos";
-        chipEmpieza.SetActive(e == 0);
+        progresos[0].text = $"{e} de {Coleccion.TotalElementos} elementos";
+        progresos[1].text = $"{m} de {Coleccion.TotalMoleculas} moléculas";
+        progresos[2].text = p == 0 ? "Aún sin puntos" : $"{p} de 300 puntos";
+        anillos[0].PonerRelleno(e / (float)Coleccion.TotalElementos);
+        anillos[1].PonerRelleno(m / (float)Coleccion.TotalMoleculas);
+        anillos[2].PonerRelleno(p / 300f);
+        recomendado = e < Coleccion.TotalElementos ? 0 : m < Coleccion.TotalMoleculas ? 1 : 2;
+        for (int i = 0; i < etiquetasSigue.Length; i++) etiquetasSigue[i].SetActive(i == recomendado);
     }
 }

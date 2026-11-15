@@ -33,6 +33,7 @@ public class ModoCombinar : MonoBehaviour
     [Header("Formada")]
     public TMP_Text formadaNombre;
     public TMP_Text formadaFormula, formadaReceta, formadaEcuacion, formadaDato;
+    public DibujoUI formadaDibujo;
 
     [Header("Barra")]
     public TMP_Text moleculasTexto;
@@ -58,7 +59,7 @@ public class ModoCombinar : MonoBehaviour
 
     // tamaño de cada átomo según cuántos hay sobre la tarjeta (1, 2, 3 o 4)
     static readonly float[] Factor = { 1f, 0.62f, 0.5f, 0.42f };
-    static readonly Color Velo = new(1f, 1f, 1f, 0.08f), Tenue = new(0.60f, 0.63f, 0.78f);
+    static readonly Color Velo = new(1f, 1f, 1f, 0.08f), Tenue = new(0.60f, 0.63f, 0.78f), Verde = new(0.21f, 0.82f, 0.50f);
 
     Estado estado = Estado.Ninguno;
     string claveMensaje;
@@ -116,12 +117,12 @@ public class ModoCombinar : MonoBehaviour
             if (gA == null)
             {
                 if (visibles.Count == 0)
-                    Mensaje(Estado.Buscar, "Junta dos tarjetas", "Ponlas una al lado de la otra y apunta la cámara para que se vean las dos.");
+                    Mensaje(Estado.Buscar, "Junta dos tarjetas", "Ponlas una al lado de la otra frente a la cámara. Puedes formar estas moléculas:");
                 else if (visibles.Count == 1)
-                    Mensaje(Estado.Una, $"Ya veo el {visibles[0].datos.nombre.ToLower()}", "Ahora acerca otra tarjeta para combinarlos.");
+                    Mensaje(Estado.Una, $"Ya veo el {visibles[0].datos.nombre.ToLower()}", "Acerca otra tarjeta para combinarlos. Puedes formar estas moléculas:");
                 else
                     Mensaje(Estado.SinReceta, $"{visibles[0].datos.nombre} y {visibles[1].datos.nombre.ToLower()} no se combinan aquí",
-                        "Prueba con hidrógeno y oxígeno, sodio y cloro, carbono y oxígeno, o hierro y oxígeno.");
+                        "Prueba con alguna de estas parejas:");
                 return;
             }
         }
@@ -229,6 +230,7 @@ public class ModoCombinar : MonoBehaviour
         formadaReceta.text = $"{receta.cantidadA} {atomos} de {a.nombre.ToLower()} y {receta.cantidadB} de {b.nombre.ToLower()}.";
         formadaEcuacion.text = "En una reacción real:  " + receta.ecuacionReal;
         formadaDato.text = receta.dato;
+        if (formadaDibujo) formadaDibujo.Poner(receta.id);      // vaso de agua, salero, refresco o clavo oxidado
     }
 
     void RefrescarProgreso()
@@ -236,9 +238,9 @@ public class ModoCombinar : MonoBehaviour
         for (int i = 0; i < chipFondo.Length && i < moleculas.Length; i++)
         {
             bool hecha = Coleccion.MoleculaFormada(moleculas[i].id);
-            chipFondo[i].color = hecha ? moleculas[i].color : Velo;
+            chipFondo[i].color = hecha ? Verde : Velo;                 // punto verde = ya la formaste
             chipTexto[i].text = moleculas[i].formula;
-            chipTexto[i].color = hecha ? AppAtomAR.Tinta(moleculas[i].color) : Tenue;
+            chipTexto[i].color = hecha ? Color.white : Tenue;
         }
         if (moleculasTexto) moleculasTexto.text = $"{Coleccion.Moleculas} de {Coleccion.TotalMoleculas}";
     }

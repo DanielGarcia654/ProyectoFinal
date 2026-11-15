@@ -1,5 +1,5 @@
 // AtomAR - Arma la app completa sobre la interfaz del Modo Elemento:
-// pantalla de inicio, barra superior con ayuda, panel del modo Combinar, Reto (quiz) y tutorial.
+// inicio en forma de recorrido, barra superior, guía animada sobre la cámara, modo Combinar, Reto (quiz) y celebraciones.
 // Menú: AtomAR > Montar interfaz   (vuelve a generar todo; las fichas de datos se regeneran con los textos de aquí)
 using System.Collections.Generic;
 using System.IO;
@@ -55,7 +55,8 @@ public static partial class AtomARUIBuilder
         var fichas = CompletarFichas();
         var mols = CrearMoleculas();
 
-        var sp = SpriteRedondeado();
+        var sp = SpriteRedondeado(); var marcoSp = SpriteMarco(); var brillo = SpriteBrillo();
+        var cartas = SpritesTarjetas();
         var syne = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(UIDir + "/Fuentes/Syne SDF.asset");
         var inter = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(UIDir + "/Fuentes/Inter SDF.asset");
         var canvasGO = GameObject.Find("UI_AtomAR");
@@ -64,15 +65,22 @@ public static partial class AtomARUIBuilder
         var marca = segura.Find("Marca"); if (marca) Object.DestroyImmediate(marca.gameObject);
         var coleccion = (RectTransform)segura.Find("Coleccion");
 
-        var combinar = MontarCombinar(segura, sp, syne, inter, mols);
+        var combinar = MontarCombinar(segura, sp, syne, inter, mols, fichas);
+        var guia = MontarGuia(canvas, sp, marcoSp, syne, inter, cartas);
         var quiz = MontarReto(canvas, sp, syne, inter, fichas, out var pantallaReto);
 
-        // ── Barra superior (modos): atrás, título, ayuda y avance
+        // ── Barra superior: atrás, título, salto al siguiente modo, ayuda y avance
         var barra = Nuevo("BarraSuperior", canvas); Estirar(barra); barra.gameObject.AddComponent<AreaSegura>();
         var barraF = barra.gameObject.AddComponent<FundidoUI>();
         var atras = Circulo("Atras", barra, sp, inter, "←", V(0, 1), V(40, -36));
         var tituloBarra = Txt("Titulo", barra, syne, "Explorar", 50, Papel, TextAlignmentOptions.MidlineLeft);
-        Anclar(tituloBarra.rectTransform, V(0, 1), V(0, 1), V(0, 1), V(144, -36), V(460, 80)); tituloBarra.characterSpacing = -2f;
+        Anclar(tituloBarra.rectTransform, V(0, 1), V(0, 1), V(0, 1), V(144, -36), V(320, 80)); tituloBarra.characterSpacing = -2f; tituloBarra.enableWordWrapping = false;
+        var sig = Caja("Siguiente", barra, marcoSp, Electron, Pil(64));
+        Anclar(sig, V(0, 1), V(0, 1), V(0, 1), V(420, -44), V(260, 64));
+        var sigHalo = Caja("Halo", sig, brillo, Electron, 1f); Estirar(sigHalo); sigHalo.offsetMin = V(-36, -36); sigHalo.offsetMax = V(36, 36);
+        var sigHaloG = sigHalo.gameObject.AddComponent<CanvasGroup>(); sigHaloG.alpha = 0f; sigHaloG.blocksRaycasts = false;
+        var sigT = Txt("Texto", sig, inter, "Ir a Combinar", 30, Electron, TextAlignmentOptions.Center, bold: true); Estirar(sigT.rectTransform); sigT.enableWordWrapping = false;
+        var bSig = Boton(sig);
         var ayuda = Circulo("Ayuda", barra, sp, inter, "?", V(1, 1), V(-292, -36));
         coleccion.SetParent(barra, false);
         var pastillaMol = Caja("Moleculas", barra, sp, new Color(Noche.r, Noche.g, Noche.b, 0.72f), 1.2f);
@@ -83,47 +91,50 @@ public static partial class AtomARUIBuilder
         Anclar(molTxt.rectTransform, Vector2.zero, Vector2.one, V(0, 0.5f), V(64, 0), V(-72, 0));
         combinar.moleculasTexto = molTxt;
 
-        // ── Pantalla de inicio
+        // ── Pantalla de inicio: un recorrido de tres paradas en lugar de tres cajas
         var inicio = Pantalla("PantallaInicio", canvas, Noche, out var ini);
         var inicioF = inicio.gameObject.AddComponent<FundidoUI>(); inicioF.visibleAlInicio = true;
+        // átomo grande de fondo, asomando por la esquina (la firma visual de la app)
+        var decor = Nuevo("AtomoDeFondo", inicio); decor.SetSiblingIndex(0);
+        Anclar(decor, V(1, 1), V(1, 1), V(0.5f, 0.5f), V(-90, -250), V(1180, 1180));
+        var bohrFondo = decor.gameObject.AddComponent<DiagramaBohr>();
+        bohrFondo.punto = sp; bohrFondo.capasIniciales = new[] { 2, 3, 4, 3 };
+        bohrFondo.colorOrbita = new Color(1f, 1f, 1f, 0.07f); bohrFondo.colorElectron = new Color(Electron.r, Electron.g, Electron.b, 0.75f);
+        bohrFondo.colorNucleo = new Color(Proton.r, Proton.g, Proton.b, 0.85f);
+        bohrFondo.radioNucleo = 70f; bohrFondo.tamElectron = 22f; bohrFondo.velocidadCapa1 = 12f;
+
         var logo = Txt("Marca", ini, syne, "AtomAR", 136, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(logo.rectTransform, V(44, -120), V(960, 170)); logo.characterSpacing = -5f;
+        Arriba(logo.rectTransform, V(44, -130), V(760, 170)); logo.characterSpacing = -5f;
         var lema = Txt("Lema", ini, inter, "Descubre de qué está hecho todo lo que te rodea.", 40, Tenue, TextAlignmentOptions.TopLeft);
-        Arriba(lema.rectTransform, V(50, -296), V(900, 120)); lema.lineSpacing = 6f;
+        Arriba(lema.rectTransform, V(50, -306), V(640, 120)); lema.lineSpacing = 6f;
 
-        var bExplorar = TarjetaModo(ini, sp, syne, inter, 0, "Explorar", "Apunta a una tarjeta y conoce su átomo.", "Fe", Electron, out var pExplorar, out var tExplorar);
-        var bCombinar = TarjetaModo(ini, sp, syne, inter, 1, "Combinar", "Junta dos tarjetas y forma una molécula.", "H<sub>2</sub>O", Proton, out var pCombinar, out _);
-        var bReto = TarjetaModo(ini, sp, syne, inter, 2, "Reto", "Responde preguntas y gana insignias.", "?", OroC, out var pReto, out _);
-        var chip = Caja("EmpiezaAqui", tExplorar, sp, new Color(TintaOsc.r, TintaOsc.g, TintaOsc.b, 0.9f), Pil(60));
-        Anclar(chip, V(1, 1), V(1, 1), V(1, 1), V(-28, -28), V(250, 60));
-        var chipT = Txt("Texto", chip, inter, "Empieza aquí", 28, Electron, TextAlignmentOptions.Center, bold: true); Estirar(chipT.rectTransform);
+        var botones = new Button[3]; var progresos = new TMP_Text[3]; var anillos = new AnilloUI[3]; var halos = new CanvasGroup[3]; var sigue = new GameObject[3];
+        string[] titulos = { "Explorar", "Combinar", "Reto" };
+        string[] descripciones = { "Apunta a una tarjeta y conoce su átomo.", "Junta dos tarjetas y forma una molécula.", "Responde preguntas y gana insignias." };
+        Color[] colores = { Electron, Proton, OroC };
+        for (int i = 0; i < 3; i++)
+            botones[i] = FilaModo(ini, sp, brillo, syne, inter, i, titulos[i], descripciones[i], colores[i], out progresos[i], out anillos[i], out halos[i], out sigue[i]);
 
-        var ayudaIni = Caja("ComoSeUsa", ini, sp, Velo, Pil(92));
-        Anclar(ayudaIni, V(0.5f, 0), V(0.5f, 0), V(0.5f, 0), V(0, 56), V(420, 92));
-        var ayudaIniT = Txt("Texto", ayudaIni, inter, "¿Cómo se usa?", 34, Papel, TextAlignmentOptions.Center, bold: true); Estirar(ayudaIniT.rectTransform);
-        var bAyudaIni = Boton(ayudaIni);
-
-        // ── Tutorial (encima de todo)
-        var tutorial = MontarTutorial(canvas, sp, syne, inter);
+        var celebracion = MontarCelebracion(canvas, sp, brillo, syne, inter, fichas, mols, cartas);
 
         // ── Controlador de la app
         var app = canvasGO.AddComponent<AppAtomAR>();
-        app.pantallaInicio = inicioF; app.barra = barraF; app.pantallaReto = pantallaReto; app.tutorial = tutorial; app.quiz = quiz;
-        app.botonExplorar = bExplorar; app.botonCombinar = bCombinar; app.botonReto = bReto; app.botonAyudaInicio = bAyudaIni;
-        app.progresoExplorar = pExplorar; app.progresoCombinar = pCombinar; app.progresoReto = pReto; app.chipEmpieza = chip.gameObject;
-        app.botonAtras = atras; app.botonAyuda = ayuda; app.tituloBarra = tituloBarra;
+        app.pantallaInicio = inicioF; app.barra = barraF; app.pantallaReto = pantallaReto; app.guia = guia; app.celebracion = celebracion; app.quiz = quiz;
+        app.botonesModo = botones; app.progresos = progresos; app.anillos = anillos; app.halos = halos; app.etiquetasSigue = sigue;
+        app.botonAtras = atras; app.botonAyuda = ayuda; app.botonSiguiente = bSig; app.tituloBarra = tituloBarra; app.siguienteTexto = sigT;
+        app.siguienteMarco = sig.GetComponent<Image>(); app.siguienteHalo = sigHaloG; app.siguienteHaloImagen = sigHalo.GetComponent<Image>();
         app.pastillaColeccion = coleccion.gameObject; app.pastillaMoleculas = pastillaMol.gameObject;
 
         var escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         EditorSceneManager.MarkSceneDirty(escena);
         EditorSceneManager.SaveScene(escena);
-        Debug.Log("[AtomAR] App montada: inicio, Explorar, Combinar, Reto y tutorial.");
+        Debug.Log("[AtomAR] App montada: inicio, Explorar, Combinar, Reto, guía animada y celebraciones.");
     }
 
     [MenuItem("AtomAR/Reiniciar progreso completo (pruebas)")]
     public static void ReiniciarTodo()
     {
-        Coleccion.Reiniciar(); ProgresoQuiz.Reiniciar(); Tutorial.OlvidarVistos(); PlayerPrefs.Save();
+        Coleccion.Reiniciar(); ProgresoQuiz.Reiniciar(); GuiaVisual.Olvidar(); AppAtomAR.OlvidarLogros(); PlayerPrefs.Save();
         Debug.Log("[AtomAR] Progreso reiniciado: colección, moléculas, insignias y tutoriales.");
     }
 
@@ -162,61 +173,78 @@ public static partial class AtomARUIBuilder
     }
 
     // ───────────────────────── Modo Combinar ─────────────────────────
-    static ModoCombinar MontarCombinar(RectTransform segura, Sprite sp, TMP_FontAsset syne, TMP_FontAsset inter, MoleculaData[] mols)
+    static ModoCombinar MontarCombinar(RectTransform segura, Sprite sp, TMP_FontAsset syne, TMP_FontAsset inter, MoleculaData[] mols, ElementoData[] fichas)
     {
-        const float W = 1032f, H = 600f;
+        const float W = 1032f, H = 700f;
         var hoja = Caja("PanelCombinar", segura, sp, new Color(Noche.r, Noche.g, Noche.b, 0.95f), 1f);
         Anclar(hoja, V(0.5f, 0), V(0.5f, 0), V(0.5f, 0), V(0, 24), V(W, H));
         hoja.GetComponent<Image>().raycastTarget = true;
         var hojaF = hoja.gameObject.AddComponent<FundidoUI>(); hojaF.desplazamiento = 60f;
 
-        // Vista: mensajes de guía + avance de las 4 moléculas
+        // Vista: guía + tabla de las moléculas que se pueden formar
         var vm = Nuevo("VistaMensaje", hoja); Estirar(vm); var vmF = vm.gameObject.AddComponent<FundidoUI>(); vmF.desplazamiento = 14f;
-        var mTitulo = Txt("Titulo", vm, syne, "Junta dos tarjetas", 62, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(mTitulo.rectTransform, V(40, -44), V(W - 80, 160)); mTitulo.characterSpacing = -2f;
-        mTitulo.enableAutoSizing = true; mTitulo.fontSizeMin = 42; mTitulo.fontSizeMax = 62;
-        var mTexto = Txt("Texto", vm, inter, "", 36, Tenue, TextAlignmentOptions.TopLeft);
-        Arriba(mTexto.rectTransform, V(40, -214), V(W - 80, 190)); mTexto.lineSpacing = 6f;
-        var chipF = new Image[4]; var chipT = new TMP_Text[4];
-        for (int i = 0; i < 4; i++)
+        var mTitulo = Txt("Titulo", vm, syne, "Junta dos tarjetas", 54, Papel, TextAlignmentOptions.TopLeft);
+        Arriba(mTitulo.rectTransform, V(40, -38), V(W - 80, 128)); mTitulo.characterSpacing = -2f; mTitulo.lineSpacing = -10f;
+        mTitulo.enableAutoSizing = true; mTitulo.fontSizeMin = 38; mTitulo.fontSizeMax = 54;
+        var mTexto = Txt("Texto", vm, inter, "", 32, Tenue, TextAlignmentOptions.TopLeft);
+        Arriba(mTexto.rectTransform, V(40, -172), V(W - 80, 90)); mTexto.lineSpacing = 4f;
+        var checkF = new Image[mols.Length]; var formulaT = new TMP_Text[mols.Length];
+        for (int i = 0; i < mols.Length; i++)
         {
-            var c = Caja($"Molecula{i + 1}", vm, sp, Velo, Pil(92));
-            Anclar(c, Vector2.zero, Vector2.zero, Vector2.zero, V(40 + i * 242, 44), V(226, 92));
-            chipF[i] = c.GetComponent<Image>();
-            chipT[i] = Txt("Formula", c, syne, mols[i].formula, 40, Tenue, TextAlignmentOptions.Center); Estirar(chipT[i].rectTransform);
+            var m = mols[i];
+            var fila = Nuevo($"Receta_{m.id}", vm); Arriba(fila, V(0, -272 - i * 104), V(W, 104));
+            var linea = Caja("Linea", fila, null, new Color(1f, 1f, 1f, 0.07f), 1f);
+            Anclar(linea, V(0, 1), V(1, 1), V(0.5f, 1), Vector2.zero, V(-80, 2));
+            var dib = Nuevo("Dibujo", fila); Anclar(dib, V(0, 0.5f), V(0, 0.5f), V(0, 0.5f), V(36, 0), V(88, 88));
+            dib.gameObject.AddComponent<DibujoUI>().figura = m.id; dib.GetComponent<DibujoUI>().raycastTarget = false;
+            var nom = Txt("Nombre", fila, syne, m.nombre, 38, Papel, TextAlignmentOptions.BottomLeft);
+            Anclar(nom.rectTransform, V(0, 0.5f), V(0, 0.5f), V(0, 0), V(144, -2), V(560, 50)); nom.characterSpacing = -1.5f;
+            string a = fichas.First(f => f.simbolo == m.simboloA).nombre.ToLower(), b = fichas.First(f => f.simbolo == m.simboloB).nombre.ToLower();
+            var par = Txt("Pareja", fila, inter, $"{a} + {b}", 28, Tenue, TextAlignmentOptions.TopLeft);
+            Anclar(par.rectTransform, V(0, 0.5f), V(0, 0.5f), V(0, 1), V(146, -6), V(560, 40));
+            formulaT[i] = Txt("Formula", fila, syne, m.formula, 40, Tenue, TextAlignmentOptions.MidlineRight);
+            Anclar(formulaT[i].rectTransform, V(1, 0), V(1, 1), V(1, 0.5f), V(-92, 0), V(260, 0));
+            var check = Caja("Lograda", fila, sp, Velo, Pil(28));
+            Anclar(check, V(1, 0.5f), V(1, 0.5f), V(1, 0.5f), V(-40, 0), V(28, 28)); checkF[i] = check.GetComponent<Image>();
         }
 
         // Vista: armar con contadores
         var va = Nuevo("VistaArmar", hoja); Estirar(va); var vaF = va.gameObject.AddComponent<FundidoUI>(); vaF.desplazamiento = 14f;
         var aTitulo = Txt("Titulo", va, syne, "Arma la molécula", 56, Papel, TextAlignmentOptions.TopLeft);
         Arriba(aTitulo.rectTransform, V(40, -40), V(W - 80, 80)); aTitulo.characterSpacing = -2f;
-        FilaContador(va, sp, syne, inter, "FilaA", -148, W, out var puntoA, out var nomA, out var cuentaA, out var menosA, out var masA);
-        FilaContador(va, sp, syne, inter, "FilaB", -288, W, out var puntoB, out var nomB, out var cuentaB, out var menosB, out var masB);
+        var aSub = Txt("Subtitulo", va, inter, "¿Cuántos átomos de cada uno hacen falta?", 32, Tenue, TextAlignmentOptions.TopLeft);
+        Arriba(aSub.rectTransform, V(42, -116), V(W - 80, 50));
+        FilaContador(va, sp, syne, inter, "FilaA", -200, W, out var puntoA, out var nomA, out var cuentaA, out var menosA, out var masA);
+        FilaContador(va, sp, syne, inter, "FilaB", -340, W, out var puntoB, out var nomB, out var cuentaB, out var menosB, out var masB);
         var pista = Txt("Pista", va, inter, "", 36, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(pista.rectTransform, V(40, -440), V(W - 80, 130)); pista.lineSpacing = 6f;
+        Arriba(pista.rectTransform, V(40, -500), V(W - 80, 130)); pista.lineSpacing = 6f;
 
-        // Vista: molécula formada
+        // Vista: molécula formada, con una ilustración de dónde la encuentras
         var vf = Nuevo("VistaFormada", hoja); Estirar(vf); var vfF = vf.gameObject.AddComponent<FundidoUI>(); vfF.desplazamiento = 14f;
+        var fDib = Nuevo("Dibujo", vf); Anclar(fDib, V(1, 1), V(1, 1), V(1, 1), V(-36, -36), V(250, 250));
+        var fDibujo = fDib.gameObject.AddComponent<DibujoUI>(); fDibujo.raycastTarget = false;
         var fNombre = Txt("Nombre", vf, syne, "Agua", 64, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(fNombre.rectTransform, V(40, -40), V(600, 90)); fNombre.characterSpacing = -2f;
-        fNombre.enableAutoSizing = true; fNombre.fontSizeMin = 40; fNombre.fontSizeMax = 64; fNombre.enableWordWrapping = false;
-        var fFormula = Txt("Formula", vf, syne, "H<sub>2</sub>O", 96, Papel, TextAlignmentOptions.TopRight);
-        Anclar(fFormula.rectTransform, V(1, 1), V(1, 1), V(1, 1), V(-40, -28), V(380, 130)); fFormula.enableWordWrapping = false;
-        var fReceta = Txt("Receta", vf, inter, "", 34, Tenue, TextAlignmentOptions.TopLeft);
-        Arriba(fReceta.rectTransform, V(40, -150), V(W - 80, 50));
-        var fEcuacion = Txt("Ecuacion", vf, inter, "", 34, Tenue, TextAlignmentOptions.TopLeft);
-        Arriba(fEcuacion.rectTransform, V(40, -206), V(W - 80, 56));
+        Arriba(fNombre.rectTransform, V(40, -40), V(W - 350, 90)); fNombre.enableWordWrapping = false; fNombre.characterSpacing = -2f; fNombre.lineSpacing = -12f;
+        fNombre.enableAutoSizing = true; fNombre.fontSizeMin = 44; fNombre.fontSizeMax = 64;
+        var fFormula = Txt("Formula", vf, syne, "H<sub>2</sub>O", 76, Papel, TextAlignmentOptions.TopLeft);
+        Arriba(fFormula.rectTransform, V(40, -132), V(W - 350, 100)); fFormula.enableWordWrapping = false;
+        var fReceta = Txt("Receta", vf, inter, "", 32, Tenue, TextAlignmentOptions.TopLeft);
+        Arriba(fReceta.rectTransform, V(40, -256), V(W - 350, 46));
+        var fEcuacion = Txt("Ecuacion", vf, inter, "", 32, Tenue, TextAlignmentOptions.TopLeft);
+        Arriba(fEcuacion.rectTransform, V(40, -304), V(W - 80, 52));
         var fDato = Txt("Dato", vf, inter, "", 36, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(fDato.rectTransform, V(40, -290), V(W - 80, 210)); fDato.lineSpacing = 8f;
-        var fNota = Txt("Nota", vf, inter, "Separa las tarjetas para armar otra.", 30, Tenue, TextAlignmentOptions.BottomLeft);
-        Anclar(fNota.rectTransform, Vector2.zero, Vector2.zero, Vector2.zero, V(40, 36), V(W - 80, 44));
+        Arriba(fDato.rectTransform, V(40, -384), V(W - 80, 230)); fDato.lineSpacing = 8f;
+        fDato.enableAutoSizing = true; fDato.fontSizeMin = 28; fDato.fontSizeMax = 36;
+        var fNota = Txt("Nota", vf, inter, "Separa las tarjetas para armar otra.", 28, Tenue, TextAlignmentOptions.BottomLeft);
+        Anclar(fNota.rectTransform, Vector2.zero, Vector2.zero, Vector2.zero, V(40, 32), V(W - 80, 40));
 
         var c2 = hoja.gameObject.AddComponent<ModoCombinar>();
         c2.moleculas = mols; c2.hoja = hojaF; c2.vistaMensaje = vmF; c2.vistaArmar = vaF; c2.vistaFormada = vfF;
-        c2.mensajeTitulo = mTitulo; c2.mensajeTexto = mTexto; c2.chipFondo = chipF; c2.chipTexto = chipT;
+        c2.mensajeTitulo = mTitulo; c2.mensajeTexto = mTexto; c2.chipFondo = checkF; c2.chipTexto = formulaT;
         c2.puntoA = puntoA; c2.puntoB = puntoB; c2.nombreA = nomA; c2.nombreB = nomB; c2.cuentaA = cuentaA; c2.cuentaB = cuentaB; c2.pista = pista;
         c2.masA = masA; c2.menosA = menosA; c2.masB = masB; c2.menosB = menosB;
         c2.formadaNombre = fNombre; c2.formadaFormula = fFormula; c2.formadaReceta = fReceta; c2.formadaEcuacion = fEcuacion; c2.formadaDato = fDato;
+        c2.formadaDibujo = fDibujo;
         return c2;
     }
 
@@ -315,40 +343,6 @@ public static partial class AtomARUIBuilder
         return q;
     }
 
-    // ───────────────────────── Tutorial ─────────────────────────
-    static Tutorial MontarTutorial(Transform canvas, Sprite sp, TMP_FontAsset syne, TMP_FontAsset inter)
-    {
-        var raiz = Pantalla("Tutorial", canvas, new Color(Noche.r * 0.6f, Noche.g * 0.6f, Noche.b * 0.6f, 0.86f), out var s);
-        var raizF = raiz.gameObject.AddComponent<FundidoUI>();
-        var tarjeta = Caja("Tarjeta", s, sp, Tarjeta, 1f);
-        Anclar(tarjeta, V(0.5f, 0.5f), V(0.5f, 0.5f), V(0.5f, 0.5f), Vector2.zero, V(960, 1000));
-
-        var cont = Nuevo("Contenido", tarjeta); Estirar(cont); var contF = cont.gameObject.AddComponent<FundidoUI>(); contF.desplazamiento = 14f; contF.visibleAlInicio = true;
-        var circulo = Caja("Circulo", cont, sp, Electron, Pil(150)); Arriba(circulo, V(56, -56), V(150, 150));
-        var numero = Txt("Numero", circulo, syne, "1", 88, TintaOsc, TextAlignmentOptions.Center); Estirar(numero.rectTransform);
-        var paso = Txt("Paso", cont, inter, "Paso 1 de 3", 32, Tenue, TextAlignmentOptions.MidlineRight, bold: true);
-        Anclar(paso.rectTransform, V(1, 1), V(1, 1), V(1, 1), V(-56, -100), V(400, 60));
-        var titulo = Txt("Titulo", cont, syne, "", 64, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(titulo.rectTransform, V(56, -256), V(848, 220)); titulo.characterSpacing = -2.5f; titulo.lineSpacing = -12f;
-        titulo.enableAutoSizing = true; titulo.fontSizeMin = 46; titulo.fontSizeMax = 64;
-        var cuerpo = Txt("Cuerpo", cont, inter, "", 38, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(cuerpo.rectTransform, V(58, -496), V(844, 320)); cuerpo.lineSpacing = 10f;
-
-        var saltar = Caja("Saltar", tarjeta, sp, new Color(1, 1, 1, 0f), Pil(110));
-        Anclar(saltar, Vector2.zero, Vector2.zero, Vector2.zero, V(40, 48), V(220, 110));
-        var saltarT = Txt("Texto", saltar, inter, "Saltar", 36, Tenue, TextAlignmentOptions.Center, bold: true); Estirar(saltarT.rectTransform);
-        var bSaltar = Boton(saltar);
-        var sig = Caja("Siguiente", tarjeta, sp, Electron, Pil(110));
-        Anclar(sig, V(1, 0), V(1, 0), V(1, 0), V(-56, 48), V(400, 110));
-        var sigT = Txt("Texto", sig, syne, "Siguiente", 44, TintaOsc, TextAlignmentOptions.Center); Estirar(sigT.rectTransform); sigT.characterSpacing = -1.5f;
-        var bSig = Boton(sig);
-
-        var t = raiz.gameObject.AddComponent<Tutorial>();
-        t.fundido = raizF; t.contenido = contF; t.circulo = circulo.GetComponent<Image>(); t.siguienteFondo = sig.GetComponent<Image>();
-        t.numero = numero; t.paso = paso; t.titulo = titulo; t.cuerpo = cuerpo; t.siguienteTexto = sigT; t.siguiente = bSig; t.saltar = bSaltar;
-        return t;
-    }
-
     // ───────────────────────── Ayudantes ─────────────────────────
     static Vector2 V(float x, float y) => new(x, y);
     static float Pil(float alto) => 48f / (alto * 0.5f);                    // esquinas totalmente redondas para ese alto
@@ -394,21 +388,234 @@ public static partial class AtomARUIBuilder
         return p;
     }
 
-    static Button TarjetaModo(RectTransform padre, Sprite sp, TMP_FontAsset syne, TMP_FontAsset inter, int i, string titulo, string desc, string fantasma,
-        Color color, out TMP_Text progreso, out RectTransform tarjeta)
+    /// Una parada del recorrido de inicio: emblema animado dentro de su anillo de avance + nombre del modo.
+    static Button FilaModo(RectTransform padre, Sprite sp, Sprite brillo, TMP_FontAsset syne, TMP_FontAsset inter, int i, string titulo, string desc, Color color,
+        out TMP_Text progreso, out AnilloUI anillo, out CanvasGroup halo, out GameObject sigue)
     {
-        Color tinta = TintaDe(color);
-        tarjeta = Caja("Modo" + titulo, padre, sp, color, 48f / 44f);
-        Arriba(tarjeta, V(44, -470 - i * 358), V(992, 330));
-        tarjeta.gameObject.AddComponent<Mask>().showMaskGraphic = true;
-        var f = Txt("Fantasma", tarjeta, syne, fantasma, 300, new Color(tinta.r, tinta.g, tinta.b, 0.13f), TextAlignmentOptions.MidlineRight);
-        Anclar(f.rectTransform, V(1, 0.5f), V(1, 0.5f), V(1, 0.5f), V(36, -44), V(800, 400)); f.enableWordWrapping = false; f.characterSpacing = -6f;
-        var t = Txt("Titulo", tarjeta, syne, titulo, 80, tinta, TextAlignmentOptions.TopLeft);
-        Arriba(t.rectTransform, V(40, -34), V(700, 100)); t.characterSpacing = -3f;
-        var d = Txt("Descripcion", tarjeta, inter, desc, 34, new Color(tinta.r, tinta.g, tinta.b, 0.82f), TextAlignmentOptions.TopLeft);
-        Arriba(d.rectTransform, V(43, -142), V(560, 100)); d.lineSpacing = 4f;
-        progreso = Txt("Progreso", tarjeta, inter, "", 32, tinta, TextAlignmentOptions.BottomLeft, bold: true);
-        Anclar(progreso.rectTransform, Vector2.zero, Vector2.zero, Vector2.zero, V(43, 34), V(700, 50));
-        return Boton(tarjeta);
+        var centro = V(0, 0.5f); const float cx = 164f;
+        var fila = Nuevo("Modo" + titulo, padre); Anclar(fila, V(0.5f, 0.5f), V(0.5f, 0.5f), V(0.5f, 0.5f), V(0, 150 - i * 400), V(1080, 300));   // repartidas alrededor del centro de la pantalla
+        var toque = fila.gameObject.AddComponent<Image>(); toque.color = new Color(0, 0, 0, 0);           // área de toque invisible
+
+        var h = Caja("Luz", fila, brillo, color, 1f); Anclar(h, centro, centro, V(0.5f, 0.5f), V(cx, 0), V(400, 400));
+        h.GetComponent<Image>().type = Image.Type.Simple;                 // resplandor redondo
+        halo = h.gameObject.AddComponent<CanvasGroup>(); halo.alpha = 0f; halo.blocksRaycasts = false;
+        var pista = Nuevo("AnilloBase", fila); Anclar(pista, centro, centro, V(0.5f, 0.5f), V(cx, 0), V(232, 232));
+        var pistaA = pista.gameObject.AddComponent<AnilloUI>(); pistaA.grosor = 9f; pistaA.color = new Color(1f, 1f, 1f, 0.10f); pistaA.raycastTarget = false;
+        var av = Nuevo("AnilloAvance", fila); Anclar(av, centro, centro, V(0.5f, 0.5f), V(cx, 0), V(232, 232));
+        anillo = av.gameObject.AddComponent<AnilloUI>(); anillo.grosor = 9f; anillo.color = color; anillo.relleno = 0f; anillo.raycastTarget = false;
+
+        var emblema = Nuevo("Emblema", fila); Anclar(emblema, centro, centro, V(0.5f, 0.5f), V(cx, 0), V(164, 164));
+        if (i == 0)
+        {
+            var bohr = emblema.gameObject.AddComponent<DiagramaBohr>();
+            bohr.punto = sp; bohr.capasIniciales = new[] { 2, 4 }; bohr.colorNucleo = Proton; bohr.colorElectron = Electron;
+            bohr.colorOrbita = new Color(1f, 1f, 1f, 0.22f); bohr.radioNucleo = 17f; bohr.tamElectron = 13f; bohr.velocidadCapa1 = 60f;
+        }
+        else { var d = emblema.gameObject.AddComponent<DibujoUI>(); d.figura = i == 1 ? "molecula" : "medalla"; d.raycastTarget = false; }
+
+        // puntitos que unen esta parada con la siguiente
+        if (i < 2)
+            for (int k = 0; k < 3; k++)
+            {
+                var p = Caja($"Camino{k}", fila, sp, new Color(1f, 1f, 1f, 0.22f), Pil(10));
+                Anclar(p, centro, centro, V(0.5f, 0.5f), V(cx, -158 - k * 42), V(10, 10));
+            }
+
+        var s = Txt("Sigue", fila, inter, "Sigue aquí", 28, color, TextAlignmentOptions.BottomLeft, bold: true);
+        Anclar(s.rectTransform, centro, centro, V(0, 0), V(324, 92), V(400, 40)); sigue = s.gameObject;
+        var t = Txt("Titulo", fila, syne, titulo, 88, color, TextAlignmentOptions.MidlineLeft);
+        Anclar(t.rectTransform, centro, centro, V(0, 0.5f), V(318, 36), V(700, 110)); t.characterSpacing = -3.5f; t.enableWordWrapping = false;
+        var d2 = Txt("Descripcion", fila, inter, desc, 34, Tenue, TextAlignmentOptions.MidlineLeft);
+        Anclar(d2.rectTransform, centro, centro, V(0, 0.5f), V(324, -42), V(720, 50)); d2.enableWordWrapping = false;
+        progreso = Txt("Progreso", fila, inter, "", 30, Papel, TextAlignmentOptions.MidlineLeft, bold: true);
+        Anclar(progreso.rectTransform, centro, centro, V(0, 0.5f), V(324, -96), V(700, 44));
+
+        var b = fila.gameObject.AddComponent<Button>(); b.transition = Selectable.Transition.None; b.targetGraphic = toque;
+        fila.gameObject.AddComponent<BotonPresionable>().escalaPresionado = 0.98f;
+        return b;
+    }
+
+    // ───────────────────────── Guía animada ─────────────────────────
+    static GuiaVisual MontarGuia(Transform canvas, Sprite sp, Sprite marcoSp, TMP_FontAsset syne, TMP_FontAsset inter, Dictionary<string, Sprite> cartas)
+    {
+        var g = Nuevo("GuiaVisual", canvas); Estirar(g);
+        var gF = g.gameObject.AddComponent<FundidoUI>(); gF.entrada = 0.12f;
+        var oscuro = new Color(Noche.r * 0.5f, Noche.g * 0.5f, Noche.b * 0.5f, 0.72f);
+        RectTransform CrearVelo(string n, Vector2 min, Vector2 max) { var v = Caja(n, g, null, oscuro, 1f); v.anchorMin = min; v.anchorMax = max; v.pivot = V(0.5f, 0.5f); v.offsetMin = v.offsetMax = Vector2.zero; return v; }
+        var vArriba = CrearVelo("VeloArriba", V(0, 0.5f), V(1, 1));
+        var vAbajo = CrearVelo("VeloAbajo", V(0, 0), V(1, 0.5f));
+        var vIzq = CrearVelo("VeloIzq", V(0, 0.5f), V(0.5f, 0.5f));
+        var vDer = CrearVelo("VeloDer", V(0.5f, 0.5f), V(1, 0.5f));
+
+        var c = V(0.5f, 0.5f);
+        var marco = Nuevo("Marco", g); Anclar(marco, c, c, c, V(0, 80), V(520, 520));
+        var esquinas = Caja("Esquinas", marco, SpriteHueco(), oscuro, 1f); Estirar(esquinas);         // redondea las esquinas del hueco
+        var borde = Caja("Borde", marco, marcoSp, Electron, 1f); Estirar(borde);
+        var escena = Nuevo("Escena", g); Anclar(escena, c, c, c, V(0, 80), Vector2.zero);
+
+        cartas.TryGetValue("01_h_hidrogeno", out var cartaH); cartas.TryGetValue("05_o_oxigeno", out var cartaO);
+        var tA = TarjetaMini("TarjetaA", escena, sp, cartaH, Hex("#2663EA"), 250);
+        var tB = TarjetaMini("TarjetaB", escena, sp, cartaO, Hex("#0990B2"), 250);
+        var atomo = Nuevo("Atomo", escena); Anclar(atomo, c, c, c, Vector2.zero, V(310, 310));
+        var bohr = atomo.gameObject.AddComponent<DiagramaBohr>(); bohr.punto = sp; bohr.capasIniciales = new[] { 1 };
+        bohr.colorNucleo = Proton; bohr.colorElectron = Electron; bohr.colorOrbita = new Color(1f, 1f, 1f, 0.5f); bohr.radioNucleo = 30f; bohr.tamElectron = 22f; bohr.velocidadCapa1 = 110f;
+        var gAtomo = atomo.gameObject.AddComponent<CanvasGroup>();
+        var mol = Nuevo("Molecula", escena); Anclar(mol, c, c, c, Vector2.zero, V(250, 250));
+        mol.gameObject.AddComponent<DibujoUI>().figura = "molecula"; var gMol = mol.gameObject.AddComponent<CanvasGroup>();
+        var mas = Caja("Mas", escena, sp, Electron, Pil(76)); Anclar(mas, c, c, c, Vector2.zero, V(150, 76));
+        var masT = Txt("Texto", mas, syne, "+1", 46, TintaOsc, TextAlignmentOptions.Center); Estirar(masT.rectTransform);
+        var gMas = mas.gameObject.AddComponent<CanvasGroup>();
+
+        var leyenda = Txt("Leyenda", g, syne, "", 50, Papel, TextAlignmentOptions.Top);
+        Anclar(leyenda.rectTransform, c, c, V(0.5f, 1), V(0, -260), V(960, 130)); leyenda.characterSpacing = -2f; leyenda.lineSpacing = -10f;
+        var ent = Caja("Entendido", g, marcoSp, Papel, Pil(92)); Anclar(ent, c, c, c, V(0, -400), V(330, 92));
+        var entT = Txt("Texto", ent, inter, "Entendido", 34, Papel, TextAlignmentOptions.Center, bold: true); Estirar(entT.rectTransform);
+        var bEnt = Boton(ent);
+
+        // Pista "toca la carta" (vive fuera del fundido de la guía)
+        var pista = Caja("PistaCarta", canvas, sp, new Color(Noche.r, Noche.g, Noche.b, 0.92f), Pil(84));
+        Anclar(pista, V(0.5f, 0), V(0.5f, 0), V(0.5f, 0), V(0, 372), V(600, 84));
+        var pistaF = pista.gameObject.AddComponent<FundidoUI>(); pistaF.desplazamiento = -16f;
+        pista.GetComponent<CanvasGroup>().blocksRaycasts = false;
+        var pPunto = Caja("Punto", pista, sp, Electron, Pil(20)); Anclar(pPunto, V(0, 0.5f), V(0, 0.5f), V(0.5f, 0.5f), V(48, 0), V(20, 20));
+        var pT = Txt("Texto", pista, inter, "Toca la carta para ver más", 34, Papel, TextAlignmentOptions.MidlineLeft, bold: true);
+        Anclar(pT.rectTransform, Vector2.zero, Vector2.one, V(0, 0.5f), V(84, 0), V(-100, 0));
+
+        var guia = g.gameObject.AddComponent<GuiaVisual>();
+        guia.fundido = gF; guia.veloArriba = vArriba; guia.veloAbajo = vAbajo; guia.veloIzq = vIzq; guia.veloDer = vDer;
+        guia.marco = marco; guia.escena = escena; guia.marcoImagen = borde.GetComponent<Image>();
+        guia.tarjetaA = tA; guia.tarjetaB = tB; guia.atomo = atomo; guia.molecula = mol; guia.mas = mas;
+        guia.grupoA = tA.GetComponent<CanvasGroup>(); guia.grupoB = tB.GetComponent<CanvasGroup>(); guia.grupoAtomo = gAtomo; guia.grupoMolecula = gMol; guia.grupoMas = gMas;
+        guia.leyenda = leyenda; guia.entendido = bEnt; guia.pistaCarta = pistaF; guia.pistaPunto = pPunto;
+        return guia;
+    }
+
+    // ───────────────────────── Celebración ─────────────────────────
+    static Celebracion MontarCelebracion(Transform canvas, Sprite sp, Sprite brillo, TMP_FontAsset syne, TMP_FontAsset inter,
+        ElementoData[] fichas, MoleculaData[] mols, Dictionary<string, Sprite> cartas)
+    {
+        var raiz = Pantalla("Celebracion", canvas, new Color(Noche.r * 0.75f, Noche.g * 0.75f, Noche.b * 0.75f, 1f), out var s);
+        var f = raiz.gameObject.AddComponent<FundidoUI>(); f.entrada = 0.1f;
+        var c = V(0.5f, 0.5f);
+        var centro = Nuevo("Orbita", s); Anclar(centro, c, c, c, V(0, 360), Vector2.zero);
+        var luz = Caja("Luz", centro, brillo, OroC, 1f); Anclar(luz, c, c, c, Vector2.zero, V(620, 620)); luz.GetComponent<Image>().color = new Color(OroC.r, OroC.g, OroC.b, 0.30f); luz.GetComponent<Image>().type = Image.Type.Simple;
+        var aE = Nuevo("Elementos", centro); Anclar(aE, c, c, c, Vector2.zero, Vector2.zero);
+        foreach (var e in fichas) { cartas.TryGetValue(e.targetName, out var carta); TarjetaMini("Carta_" + e.simbolo, aE, sp, carta, e.color, 138); }
+        var aM = Nuevo("Moleculas", centro); Anclar(aM, c, c, c, Vector2.zero, Vector2.zero);
+        foreach (var m in mols) { var d = Nuevo("Dibujo_" + m.id, aM); Anclar(d, c, c, c, Vector2.zero, V(200, 200)); d.gameObject.AddComponent<DibujoUI>().figura = m.id; }
+        var cuenta = Txt("Cuenta", centro, syne, "10 de 10", 104, OroC, TextAlignmentOptions.Center);
+        Anclar(cuenta.rectTransform, c, c, c, Vector2.zero, V(560, 150)); cuenta.characterSpacing = -4f; cuenta.enableWordWrapping = false;
+
+        var titulo = Txt("Titulo", s, syne, "", 72, Papel, TextAlignmentOptions.Top);
+        Anclar(titulo.rectTransform, c, c, V(0.5f, 1), V(0, -120), V(960, 190)); titulo.characterSpacing = -3f; titulo.lineSpacing = -14f;
+        var texto = Txt("Texto", s, inter, "", 38, Tenue, TextAlignmentOptions.Top);
+        Anclar(texto.rectTransform, c, c, V(0.5f, 1), V(0, -330), V(860, 150)); texto.lineSpacing = 6f;
+
+        var halo = Caja("LuzBoton", s, brillo, Electron, 1f); Anclar(halo, V(0.5f, 0), V(0.5f, 0), V(0.5f, 0.5f), V(0, 295), V(1100, 240));
+        var haloG = halo.gameObject.AddComponent<CanvasGroup>(); haloG.blocksRaycasts = false;
+        var bCont = BotonAncho("Continuar", s, sp, syne, "Continuar", 230, Electron, out var contT);
+        var bQue = BotonAncho("Quedarse", s, sp, inter, "Seguir explorando", 84, new Color(1, 1, 1, 0f), out var queT); queT.fontSize = 36; queT.color = Tenue;
+
+        var cel = raiz.gameObject.AddComponent<Celebracion>();
+        cel.fundido = f; cel.anilloElementos = aE; cel.anilloMoleculas = aM; cel.halo = halo; cel.haloGrupo = haloG; cel.haloImagen = halo.GetComponent<Image>();
+        cel.continuarFondo = bCont.GetComponent<Image>(); cel.cuenta = cuenta; cel.titulo = titulo; cel.texto = texto; cel.continuarTexto = contT; cel.quedarseTexto = queT;
+        cel.continuar = bCont; cel.quedarse = bQue;
+        return cel;
+    }
+
+    /// Miniatura de una tarjeta real (con esquinas redondeadas); si no hay imagen usa el color del elemento.
+    static RectTransform TarjetaMini(string nombre, RectTransform padre, Sprite sp, Sprite carta, Color respaldo, float tam)
+    {
+        var c = V(0.5f, 0.5f);
+        var t = Caja(nombre, padre, sp, Color.white, 48f / (tam * 0.13f)); Anclar(t, c, c, c, Vector2.zero, V(tam, tam));
+        t.gameObject.AddComponent<Mask>().showMaskGraphic = true; t.gameObject.AddComponent<CanvasGroup>();
+        var img = Nuevo("Imagen", t); Estirar(img);
+        var im = img.gameObject.AddComponent<Image>(); im.raycastTarget = false;
+        if (carta) im.sprite = carta; else im.color = respaldo;
+        return t;
+    }
+
+    // ───────────────────────── Sprites generados ─────────────────────────
+    /// Las imágenes de las tarjetas (targets de Vuforia), copiadas en chico para usarlas en la interfaz.
+    static Dictionary<string, Sprite> SpritesTarjetas()
+    {
+        const string origen = "Assets/Editor/Vuforia/ImageTargetTextures/AtomAR";
+        string destino = UIDir + "/Tarjetas";
+        var d = new Dictionary<string, Sprite>();
+        if (!Directory.Exists(origen)) return d;
+        Directory.CreateDirectory(destino);
+        foreach (var archivo in Directory.GetFiles(origen, "*_scaled.jpg"))
+        {
+            string nombre = Path.GetFileNameWithoutExtension(archivo).Replace("_scaled", "");
+            string dst = $"{destino}/{nombre}.jpg";
+            if (!File.Exists(dst))
+            {
+                File.Copy(archivo, dst);
+                AssetDatabase.ImportAsset(dst);
+                var imp = (TextureImporter)AssetImporter.GetAtPath(dst);
+                imp.textureType = TextureImporterType.Sprite; imp.spriteImportMode = SpriteImportMode.Single;
+                imp.maxTextureSize = 256; imp.mipmapEnabled = false;
+                imp.SaveAndReimport();
+            }
+            var s = AssetDatabase.LoadAssetAtPath<Sprite>(dst);
+            if (s) d[nombre] = s;
+        }
+        return d;
+    }
+
+    /// Contorno redondeado (solo la línea), para marcos y botones sin relleno.
+    static Sprite SpriteMarco()
+    {
+        string path = UIDir + "/Marco.png";
+        var existente = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (existente) return existente;
+        const int N = 128; const float R = 48f, G = 6f;
+        var tex = new Texture2D(N, N, TextureFormat.RGBA32, false);
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            // distancia hacia adentro desde el borde del rectángulo redondeado
+            float px = Mathf.Min(x + 0.5f, N - x - 0.5f), py = Mathf.Min(y + 0.5f, N - y - 0.5f);
+            float dentro = px < R && py < R ? R - Vector2.Distance(new Vector2(px, py), new Vector2(R, R)) : Mathf.Min(px, py);
+            float a = Mathf.Clamp01(dentro + 0.5f) * Mathf.Clamp01(G - dentro + 0.5f);
+            tex.SetPixel(x, y, new Color(1, 1, 1, a));
+        }
+        return GuardarSprite(tex, path, new Vector4(R, R, R, R));
+    }
+
+    /// Lo contrario de un rectángulo redondeado: solo las cuatro esquinas de afuera (para el hueco de la guía).
+    static Sprite SpriteHueco()
+    {
+        string path = UIDir + "/Hueco.png";
+        var existente = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (existente) return existente;
+        const int N = 128; const float R = 48f;
+        var tex = new Texture2D(N, N, TextureFormat.RGBA32, false);
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            float px = Mathf.Min(x + 0.5f, N - x - 0.5f), py = Mathf.Min(y + 0.5f, N - y - 0.5f);
+            float dentro = px < R && py < R ? R - Vector2.Distance(new Vector2(px, py), new Vector2(R, R)) : Mathf.Min(px, py);
+            tex.SetPixel(x, y, new Color(1, 1, 1, 1f - Mathf.Clamp01(dentro + 0.5f)));
+        }
+        return GuardarSprite(tex, path, new Vector4(R, R, R, R));
+    }
+
+    /// Resplandor suave para iluminar botones y emblemas.
+    static Sprite SpriteBrillo()
+    {
+        string path = UIDir + "/Brillo.png";
+        var existente = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (existente) return existente;
+        const int N = 128; const float B = 60f;
+        var tex = new Texture2D(N, N, TextureFormat.RGBA32, false);
+        for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++)
+        {
+            float cx = Mathf.Clamp(x + 0.5f, B, N - B), cy = Mathf.Clamp(y + 0.5f, B, N - B);
+            float a = Mathf.Clamp01(1f - Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy)) / B);
+            tex.SetPixel(x, y, new Color(1, 1, 1, a * a));
+        }
+        return GuardarSprite(tex, path, new Vector4(B, B, B, B));
     }
 }

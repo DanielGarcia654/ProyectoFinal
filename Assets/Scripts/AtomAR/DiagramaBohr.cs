@@ -13,6 +13,11 @@ public class DiagramaBohr : MonoBehaviour
     public float tamElectron = 13f;
     public float velocidadCapa1 = 70f;                     // °/s, las capas exteriores van más lento
 
+    [Tooltip("Si se llena, el átomo se arma solo al iniciar (para átomos decorativos)")]
+    public int[] capasIniciales;
+
+    void Start() { if (capasIniciales != null && capasIniciales.Length > 0 && capas.Length == 0) Construir(capasIniciales); }
+
     RectTransform[] capas = new RectTransform[0];
     float[] velocidades = new float[0];
 

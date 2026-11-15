@@ -117,6 +117,9 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     }
 
     public static ElementoData Actual => instancia ? instancia.actual : null;
+    /// Hay una carta a la vista / la carta está desplegada (los usa la guía para dar pistas).
+    public static bool HayCarta => instancia && instancia.mostrando;
+    public static bool Desplegada => instancia && instancia.expandido;
 
     // ───────── Ciclo de vida ─────────
     void Awake()
@@ -252,7 +255,7 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         ActualizarSelector(dt);
 
-        bool buscar = enModo && !mostrando && visibles.Count == 0 && ahora - sinTarjetaDesde > 0.6f;
+        bool buscar = enModo && !GuiaVisual.Activa && !mostrando && visibles.Count == 0 && ahora - sinTarjetaDesde > 0.6f;
         if (escaner)
         {
             escA = Mathf.SmoothDamp(escA, buscar ? 1f : 0f, ref vEsc, buscar ? 0.12f : 0.04f, Mathf.Infinity, dt);
