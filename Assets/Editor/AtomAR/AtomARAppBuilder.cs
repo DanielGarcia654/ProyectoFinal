@@ -67,7 +67,7 @@ public static partial class AtomARUIBuilder
 
         var combinar = MontarCombinar(segura, sp, syne, inter, mols, fichas);
         var guia = MontarGuia(canvas, sp, marcoSp, syne, inter, cartas);
-        var quiz = MontarReto(canvas, sp, syne, inter, fichas, out var pantallaReto);
+        var quiz = MontarReto(canvas, sp, marcoSp, syne, inter, fichas, cartas, out var pantallaReto);
 
         // ── Barra superior: atrás, título, salto al siguiente modo, ayuda y avance
         var barra = Nuevo("BarraSuperior", canvas); Estirar(barra); barra.gameObject.AddComponent<AreaSegura>();
@@ -272,11 +272,14 @@ public static partial class AtomARUIBuilder
     }
 
     // ───────────────────────── Reto ─────────────────────────
-    static Quiz MontarReto(Transform canvas, Sprite sp, TMP_FontAsset syne, TMP_FontAsset inter, ElementoData[] fichas, out FundidoUI pantallaF)
+    static Quiz MontarReto(Transform canvas, Sprite sp, Sprite marcoSp, TMP_FontAsset syne, TMP_FontAsset inter, ElementoData[] fichas,
+        Dictionary<string, Sprite> cartas, out FundidoUI pantallaF)
     {
         var pantalla = Pantalla("PantallaReto", canvas, Noche, out var s);
         pantallaF = pantalla.gameObject.AddComponent<FundidoUI>();
         const float W = 992f, X = 44f;
+        var c = V(0.5f, 0.5f);
+        var verde = new Color(0.21f, 0.82f, 0.50f);
 
         // Portada con insignias
         var vp = Nuevo("Portada", s); Estirar(vp); var vpF = vp.gameObject.AddComponent<FundidoUI>(); vpF.desplazamiento = 16f;
@@ -284,17 +287,17 @@ public static partial class AtomARUIBuilder
         Arriba(pTitulo.rectTransform, V(X, -176), V(W, 200)); pTitulo.characterSpacing = -3f; pTitulo.lineSpacing = -14f;
         var pTexto = Txt("Texto", vp, inter, "Cada ronda trae 10 preguntas. Por cada elemento ganas una insignia: bronce con 1 acierto, plata con 2 y oro con 3.", 34, Tenue, TextAlignmentOptions.TopLeft);
         Arriba(pTexto.rectTransform, V(X + 4, -400), V(W - 8, 150)); pTexto.lineSpacing = 6f;
-        var puntos = Txt("Puntos", vp, syne, "0 puntos", 56, OroC, TextAlignmentOptions.TopLeft);
+        var puntos = Txt("Puntos", vp, syne, "Aún sin puntos", 56, OroC, TextAlignmentOptions.TopLeft);
         Arriba(puntos.rectTransform, V(X, -574), V(W, 80)); puntos.characterSpacing = -2f;
         var iFondo = new Image[fichas.Length]; var iAro = new AnilloUI[fichas.Length]; var iSim = new TMP_Text[fichas.Length];
         for (int i = 0; i < fichas.Length; i++)
         {
             var celda = Nuevo($"Insignia_{fichas[i].simbolo}", vp);
             Arriba(celda, V(X + (i % 5) * 198.4f, -690 - (i / 5) * 214), V(198.4f, 200));
-            var aro = Nuevo("Aro", celda); Anclar(aro, V(0.5f, 0.5f), V(0.5f, 0.5f), V(0.5f, 0.5f), Vector2.zero, V(172, 172));
+            var aro = Nuevo("Aro", celda); Anclar(aro, c, c, c, Vector2.zero, V(172, 172));
             iAro[i] = aro.gameObject.AddComponent<AnilloUI>(); iAro[i].grosor = 9f; iAro[i].raycastTarget = false;
             var fondo = Caja("Fondo", celda, sp, fichas[i].color, Pil(140));
-            Anclar(fondo, V(0.5f, 0.5f), V(0.5f, 0.5f), V(0.5f, 0.5f), Vector2.zero, V(140, 140)); iFondo[i] = fondo.GetComponent<Image>();
+            Anclar(fondo, c, c, c, Vector2.zero, V(140, 140)); iFondo[i] = fondo.GetComponent<Image>();
             iSim[i] = Txt("Simbolo", fondo, syne, fichas[i].simbolo, 56, Papel, TextAlignmentOptions.Center); Estirar(iSim[i].rectTransform);
         }
         var bEmpezar = BotonAncho("Empezar", vp, sp, syne, "Empezar ronda", 80, OroC, out _);
@@ -302,44 +305,80 @@ public static partial class AtomARUIBuilder
         // Pregunta
         var vq = Nuevo("Pregunta", s); Estirar(vq); var vqF = vq.gameObject.AddComponent<FundidoUI>(); vqF.desplazamiento = 16f;
         var progreso = Txt("Progreso", vq, inter, "Pregunta 1 de 10", 32, Tenue, TextAlignmentOptions.TopLeft, bold: true);
-        Arriba(progreso.rectTransform, V(X, -170), V(W, 44));
+        Arriba(progreso.rectTransform, V(X, -170), V(500, 44));
+        var racha = Caja("Racha", vq, sp, OroC, Pil(56)); Anclar(racha, V(1, 1), V(1, 1), V(1, 0.5f), V(-X, -190), V(230, 56));
+        var rachaT = Txt("Texto", racha, inter, "Racha de 2", 28, TintaOsc, TextAlignmentOptions.Center, bold: true); Estirar(rachaT.rectTransform);
+        var rachaG = racha.gameObject.AddComponent<CanvasGroup>(); rachaG.alpha = 0f; rachaG.blocksRaycasts = false;
         var barraFondo = Caja("Barra", vq, sp, Velo, Pil(12)); Arriba(barraFondo, V(X, -226), V(W, 12));
         var relleno = Caja("Relleno", barraFondo, sp, OroC, Pil(12)); Estirar(relleno); relleno.anchorMax = V(0.001f, 1);
-        var pregunta = Txt("Texto", vq, syne, "", 60, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(pregunta.rectTransform, V(X, -280), V(W, 310)); pregunta.characterSpacing = -2f; pregunta.lineSpacing = -10f;
-        pregunta.enableAutoSizing = true; pregunta.fontSizeMin = 42; pregunta.fontSizeMax = 60;
-        var ops = new Button[4]; var opF = new Image[4]; var opT = new TMP_Text[4];
+
+        // tarjeta misteriosa (se voltea al contestar) o átomo animado como pista
+        var visual = Nuevo("Visual", vq); Anclar(visual, V(0.5f, 1), V(0.5f, 1), c, V(0, -400), V(264, 264));
+        var carta = TarjetaMini("Carta", visual, sp, null, Tarjeta, 250);
+        var cartaImg = carta.Find("Imagen").GetComponent<Image>();
+        var tapa = Caja("Tapa", visual, sp, Tarjeta, 48f / (250 * 0.13f)); Anclar(tapa, c, c, c, Vector2.zero, V(250, 250));
+        var tapaBorde = Caja("Borde", tapa, marcoSp, OroC, 48f / (250 * 0.13f)); Estirar(tapaBorde);
+        var tapaT = Txt("Texto", tapa, syne, "?", 130, OroC, TextAlignmentOptions.Center); Estirar(tapaT.rectTransform); tapaT.characterSpacing = -4f;
+        var atomo = Nuevo("Atomo", visual); Estirar(atomo);
+        var bohr = atomo.gameObject.AddComponent<DiagramaBohr>(); bohr.punto = sp; bohr.colorNucleo = Proton; bohr.colorElectron = Electron;
+        bohr.colorOrbita = new Color(1f, 1f, 1f, 0.2f); bohr.radioNucleo = 20f; bohr.tamElectron = 12f;
+
+        var pregunta = Txt("Texto", vq, syne, "", 54, Papel, TextAlignmentOptions.TopLeft);
+        Arriba(pregunta.rectTransform, V(X, -556), V(W, 190)); pregunta.characterSpacing = -2f; pregunta.lineSpacing = -10f;
+        pregunta.enableAutoSizing = true; pregunta.fontSizeMin = 38; pregunta.fontSizeMax = 54;
+        var ops = new Button[4]; var opF = new Image[4]; var opT = new TMP_Text[4]; var opG = new CanvasGroup[4];
         for (int i = 0; i < 4; i++)
         {
-            var o = Caja($"Opcion{i + 1}", vq, sp, Velo, 48f / 36f); Arriba(o, V(X, -630 - i * 150), V(W, 130));
-            opF[i] = o.GetComponent<Image>();
+            var o = Caja($"Opcion{i + 1}", vq, sp, Velo, 48f / 36f); Arriba(o, V(X, -770 - i * 140), V(W, 124));
+            opF[i] = o.GetComponent<Image>(); opG[i] = o.gameObject.AddComponent<CanvasGroup>();
             opT[i] = Txt("Texto", o, inter, "", 42, Papel, TextAlignmentOptions.MidlineLeft, bold: true);
             Estirar(opT[i].rectTransform); opT[i].rectTransform.offsetMin = V(44, 0); opT[i].rectTransform.offsetMax = V(-44, 0);
             ops[i] = Boton(o);
         }
-        var retro = Nuevo("Retro", vq); Arriba(retro, V(X, -1250), V(W, 250)); var retroF = retro.gameObject.AddComponent<FundidoUI>(); retroF.desplazamiento = 12f;
+        var flot = Txt("Flotante", vq, syne, "+10", 64, Papel, TextAlignmentOptions.Center);
+        Arriba(flot.rectTransform, Vector2.zero, V(220, 80)); var flotG = flot.gameObject.AddComponent<CanvasGroup>(); flotG.alpha = 0f; flotG.blocksRaycasts = false;
+        var retro = Nuevo("Retro", vq); Arriba(retro, V(X, -1340), V(W, 220)); var retroF = retro.gameObject.AddComponent<FundidoUI>(); retroF.desplazamiento = 12f;
         var rTitulo = Txt("Titulo", retro, syne, "¡Correcto!", 48, Papel, TextAlignmentOptions.TopLeft); Arriba(rTitulo.rectTransform, V(0, 0), V(W, 64));
-        var rTexto = Txt("Texto", retro, inter, "", 32, Papel, TextAlignmentOptions.TopLeft); Arriba(rTexto.rectTransform, V(2, -70), V(W - 4, 180));
-        rTexto.lineSpacing = 6f; rTexto.enableAutoSizing = true; rTexto.fontSizeMin = 26; rTexto.fontSizeMax = 32;
+        var rTexto = Txt("Texto", retro, inter, "", 32, Papel, TextAlignmentOptions.TopLeft); Arriba(rTexto.rectTransform, V(2, -70), V(W - 4, 150));
+        rTexto.lineSpacing = 6f; rTexto.enableAutoSizing = true; rTexto.fontSizeMin = 24; rTexto.fontSizeMax = 32;
         var bSig = BotonAncho("Siguiente", vq, sp, syne, "Siguiente", 80, OroC, out var sigT);
 
         // Resultado
         var vr = Nuevo("Resultado", s); Estirar(vr); var vrF = vr.gameObject.AddComponent<FundidoUI>(); vrF.desplazamiento = 16f;
         var rNum = Txt("Numero", vr, syne, "7 de 10", 190, OroC, TextAlignmentOptions.TopLeft);
         Arriba(rNum.rectTransform, V(X, -300), V(W, 250)); rNum.characterSpacing = -6f; rNum.enableWordWrapping = false;
+        var puntosR = new Image[10];
+        for (int i = 0; i < 10; i++)
+        {
+            var p = Caja($"Punto{i + 1}", vr, sp, verde, Pil(40)); Anclar(p, V(0, 1), V(0, 1), c, V(X + 20 + i * 56, -590), V(40, 40));
+            puntosR[i] = p.GetComponent<Image>();
+        }
         var rMsg = Txt("Mensaje", vr, syne, "", 64, Papel, TextAlignmentOptions.TopLeft);
-        Arriba(rMsg.rectTransform, V(X, -580), V(W, 170)); rMsg.characterSpacing = -2f; rMsg.lineSpacing = -10f;
-        var rIns = Txt("Insignias", vr, inter, "", 38, Tenue, TextAlignmentOptions.TopLeft); Arriba(rIns.rectTransform, V(X + 4, -770), V(W, 60));
+        Arriba(rMsg.rectTransform, V(X, -660), V(W, 170)); rMsg.characterSpacing = -2f; rMsg.lineSpacing = -10f;
+        var rIns = Txt("Insignias", vr, inter, "", 38, Tenue, TextAlignmentOptions.TopLeft); Arriba(rIns.rectTransform, V(X + 4, -850), V(W, 60));
         var bOtra = BotonAncho("OtraRonda", vr, sp, syne, "Otra ronda", 230, OroC, out _);
         var bVer = BotonAncho("VerInsignias", vr, sp, syne, "Ver mis insignias", 80, Velo, out _);
 
+        // Aviso al ganar una insignia (encima de la pregunta)
+        var aviso = Caja("AvisoInsignia", s, sp, Tarjeta, Pil(92)); Anclar(aviso, V(0.5f, 0), V(0.5f, 0), V(0.5f, 0), V(0, 240), V(700, 92));     // abajo, arriba del botón Siguiente
+        var avisoF = aviso.gameObject.AddComponent<FundidoUI>(); avisoF.desplazamiento = 18f;
+        var avisoAro = Nuevo("Aro", aviso); Anclar(avisoAro, V(0, 0.5f), V(0, 0.5f), c, V(52, 0), V(50, 50));
+        var avisoAnillo = avisoAro.gameObject.AddComponent<AnilloUI>(); avisoAnillo.grosor = 8f; avisoAnillo.raycastTarget = false;
+        var avisoT = Txt("Texto", aviso, inter, "Insignia de bronce: Hierro", 34, Papel, TextAlignmentOptions.MidlineLeft, bold: true);
+        Anclar(avisoT.rectTransform, Vector2.zero, Vector2.one, V(0, 0.5f), V(96, 0), V(-120, 0));
+
         var q = pantalla.gameObject.AddComponent<Quiz>();
         q.elementos = fichas;
+        q.cartas = fichas.Select(f => cartas.TryGetValue(f.targetName, out var sprite) ? sprite : null).ToArray();
         q.portada = vpF; q.puntosTexto = puntos; q.insigniaFondo = iFondo; q.insigniaAro = iAro; q.insigniaSimbolo = iSim; q.empezar = bEmpezar;
         q.vistaPregunta = vqF; q.progresoTexto = progreso; q.preguntaTexto = pregunta; q.barraRelleno = relleno;
-        q.opciones = ops; q.opcionFondo = opF; q.opcionTexto = opT; q.retro = retroF; q.retroTitulo = rTitulo; q.retroTexto = rTexto;
+        q.opciones = ops; q.opcionFondo = opF; q.opcionTexto = opT; q.opcionGrupo = opG; q.retro = retroF; q.retroTitulo = rTitulo; q.retroTexto = rTexto;
         q.siguiente = bSig; q.siguienteTexto = sigT;
-        q.vistaResultado = vrF; q.resultadoNumero = rNum; q.resultadoMensaje = rMsg; q.resultadoInsignias = rIns; q.otraRonda = bOtra; q.verInsignias = bVer;
+        q.visual = visual; q.carta = carta.gameObject; q.tapa = tapa.gameObject; q.cartaImagen = cartaImg; q.tapaTexto = tapaT; q.atomo = bohr;
+        q.rachaRT = racha; q.rachaGrupo = rachaG; q.rachaTexto = rachaT; q.flotante = flot; q.flotanteGrupo = flotG;
+        q.avisoInsignia = avisoF; q.avisoAro = avisoAnillo; q.avisoTexto = avisoT;
+        q.vistaResultado = vrF; q.resultadoNumero = rNum; q.resultadoMensaje = rMsg; q.resultadoInsignias = rIns; q.puntosResultado = puntosR;
+        q.otraRonda = bOtra; q.verInsignias = bVer;
         return q;
     }
 

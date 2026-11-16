@@ -24,6 +24,8 @@ public class GuiaVisual : MonoBehaviour
     public CanvasGroup grupoA, grupoB, grupoAtomo, grupoMolecula, grupoMas;
     public TMP_Text leyenda;
     public Button entendido;
+    [Tooltip("Velocidad del ejemplo animado: 1 = normal, menos = más lento")]
+    [Range(0.2f, 1.5f)] public float velocidad = 0.55f;
     [Header("Pista de la carta")]
     public FundidoUI pistaCarta;
     public RectTransform pistaPunto;
@@ -87,7 +89,7 @@ public class GuiaVisual : MonoBehaviour
         int visibles = ElementoTarget.Todos.Count(x => x && x.Visible);
         if (!manual && ((modo == ModoApp.Explorar && visibles >= 1) || (modo == ModoApp.Combinar && visibles >= 2))) { Cerrar(true); return; }
 
-        t += Time.unscaledDeltaTime;
+        t += Time.unscaledDeltaTime * velocidad;
         float pulso = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 3f);
         marcoImagen.color = Color.Lerp(Cian, Color.white, pulso * 0.45f);
         marcoImagen.rectTransform.localScale = Vector3.one * (1f + 0.012f * pulso);
