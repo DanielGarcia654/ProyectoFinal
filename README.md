@@ -5,6 +5,16 @@ App de Realidad Aumentada para aprender la tabla periódica en secundaria. El al
 Proyecto final de la materia de Realidad Virtual y Aumentada.
 Autor: Gerardo Daniel García Cerda (cuenta 319044546).
 
+## Documentación y entregables
+
+| Entregable | Dónde está |
+|---|---|
+| Manual de usuario | [`docs/AtomAR_Manual_de_Usuario.pdf`](docs/AtomAR_Manual_de_Usuario.pdf) |
+| Manual técnico (cronograma, estructura, tecnologías, procedimientos) | [`docs/AtomAR_Manual_Tecnico.pdf`](docs/AtomAR_Manual_Tecnico.pdf) |
+| Análisis de costos, viabilidad y precio | [`docs/AtomAR_Costos_Viabilidad_Precio.pdf`](docs/AtomAR_Costos_Viabilidad_Precio.pdf) |
+| Video de funcionamiento en tablet Android | [`docs/video/AtomAR_Demo.mp4`](docs/video/AtomAR_Demo.mp4) |
+| Ejecutable (APK) | Sección **Releases** del repositorio |
+
 ## Qué hace
 
 | Modo | Qué hace el alumno | Qué aprende |
