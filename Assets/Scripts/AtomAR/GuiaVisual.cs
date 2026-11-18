@@ -1,9 +1,9 @@
 // AtomAR - Guía animada sobre la cámara (sustituye al tutorial de texto).
 // • Oscurece la pantalla y deja iluminado el marco donde va la tarjeta.
-// • Dentro del marco se repite una animación de ejemplo: en Explorar entra una tarjeta y aparece su átomo;
-//   en Combinar se juntan dos tarjetas, se agrega un átomo y se forma la molécula.
+// • Dentro del marco se repite un ejemplo en 3D (DioramaGuia): la tarjeta real con luz y sombra, el átomo que aparece
+//   y un dedo que enseña a girarlo y acercarlo; en Combinar, cómo se agrega un átomo y se forma la molécula.
 // • Se cierra sola en cuanto el alumno lo logra de verdad, o con "Entendido". El botón "?" la vuelve a abrir.
-// • Además, la primera vez que aparece una carta muestra la pista "Toca la carta para ver más".
+// • Además da dos pistas de una sola vez en Explorar: "toca la carta" y cómo mover el átomo.
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -18,35 +18,47 @@ public class GuiaVisual : MonoBehaviour
     public RectTransform veloArriba;
     public RectTransform veloAbajo, veloIzq, veloDer, marco, escena;
     public Image marcoImagen;
-    [Header("Ejemplo animado")]
-    public RectTransform tarjetaA;
-    public RectTransform tarjetaB, atomo, molecula, mas;
-    public CanvasGroup grupoA, grupoB, grupoAtomo, grupoMolecula, grupoMas;
+    [Header("Ejemplo en 3D")]
+    public DioramaGuia diorama;
     public TMP_Text leyenda;
     public Button entendido;
     [Tooltip("Velocidad del ejemplo animado: 1 = normal, menos = más lento")]
-    [Range(0.2f, 1.5f)] public float velocidad = 0.55f;
+    [Range(0.2f, 1.5f)] public float velocidad = 0.6f;
     [Header("Pista de la carta")]
     public FundidoUI pistaCarta;
     public RectTransform pistaPunto;
 
     static readonly Color Cian = new(0.18f, 0.90f, 1f);
-    const string ClavePista = "AtomAR.pista.carta";
+    static readonly string[] TextosExplorar =
+    {
+        "Pon una tarjeta dentro del marco", "Deja el teléfono quieto un momento", "¡Y aparece su átomo!",
+        "Gira el átomo con un dedo", "Acércalo con dos dedos",
+    };
+    static readonly string[] TextosCombinar =
+    {
+        "Junta dos tarjetas dentro del marco", "Con + agregas el átomo que falta", "¡Y se forma la molécula!",
+    };
+    const string ClavePista = "AtomAR.pista.carta", ClaveGestos = "AtomAR.pista.gestos";
 
-    ModoApp modo; bool manual, pistaVista;
+    ModoApp modo; bool manual, pistaVista, gestosVista;
+    TMP_Text pistaTexto; CanvasGroup grupo;
     float t; int fase = -1;
 
     static string Clave(ModoApp m) => "AtomAR.guia." + m;
     public static bool Vista(ModoApp m) => PlayerPrefs.GetInt(Clave(m), 0) == 1;
     public static void Olvidar()
     {
-        PlayerPrefs.DeleteKey(Clave(ModoApp.Explorar)); PlayerPrefs.DeleteKey(Clave(ModoApp.Combinar)); PlayerPrefs.DeleteKey(ClavePista);
+        PlayerPrefs.DeleteKey(Clave(ModoApp.Explorar)); PlayerPrefs.DeleteKey(Clave(ModoApp.Combinar));
+        PlayerPrefs.DeleteKey(ClavePista); PlayerPrefs.DeleteKey(ClaveGestos);
     }
 
     void Awake()
     {
         entendido.onClick.AddListener(() => Cerrar(true));
         pistaVista = PlayerPrefs.GetInt(ClavePista, 0) == 1;
+        gestosVista = PlayerPrefs.GetInt(ClaveGestos, 0) == 1;
+        pistaTexto = pistaCarta.GetComponentInChildren<TMP_Text>(true);
+        grupo = fundido.GetComponent<CanvasGroup>();
         Activa = false;
     }
 
@@ -54,8 +66,9 @@ public class GuiaVisual : MonoBehaviour
     public void Mostrar(ModoApp m, bool esManual)
     {
         modo = m; manual = esManual; t = 0f; fase = -1; Activa = true;
-        if (m == ModoApp.Combinar) PonerHueco(900f, 470f, 300f); else PonerHueco(520f, 520f, 80f);
-        grupoA.alpha = grupoB.alpha = grupoAtomo.alpha = grupoMolecula.alpha = grupoMas.alpha = 0f;
+        var tam = m == ModoApp.Combinar ? new Vector2(900f, 470f) : new Vector2(560f, 620f);
+        PonerHueco(tam, m == ModoApp.Combinar ? 300f : 110f);
+        diorama.Preparar(m, tam);
         fundido.Mostrar(true);
     }
 
@@ -67,14 +80,15 @@ public class GuiaVisual : MonoBehaviour
         fundido.Mostrar(false);
     }
 
-    void PonerHueco(float w, float h, float cy)
+    void PonerHueco(Vector2 tam, float cy)
     {
+        float w = tam.x, h = tam.y;
         veloArriba.offsetMin = new Vector2(0f, cy + h * 0.5f); veloArriba.offsetMax = Vector2.zero;
         veloAbajo.offsetMin = Vector2.zero; veloAbajo.offsetMax = new Vector2(0f, cy - h * 0.5f);
         veloIzq.offsetMin = new Vector2(0f, cy - h * 0.5f); veloIzq.offsetMax = new Vector2(-w * 0.5f, cy + h * 0.5f);
         veloDer.offsetMin = new Vector2(w * 0.5f, cy - h * 0.5f); veloDer.offsetMax = new Vector2(0f, cy + h * 0.5f);
-        marco.anchoredPosition = escena.anchoredPosition = new Vector2(0f, cy);
-        marco.sizeDelta = new Vector2(w, h);
+        marco.anchoredPosition = escena.anchoredPosition = marcoImagen.rectTransform.anchoredPosition = new Vector2(0f, cy);
+        marco.sizeDelta = marcoImagen.rectTransform.sizeDelta = tam;
         leyenda.rectTransform.anchoredPosition = new Vector2(0f, cy - h * 0.5f - 86f);
         ((RectTransform)entendido.transform).anchoredPosition = new Vector2(0f, cy - h * 0.5f - 214f);
     }
@@ -82,6 +96,7 @@ public class GuiaVisual : MonoBehaviour
     void Update()
     {
         ActualizarPista();
+        diorama.Activar(Activa || grupo.alpha > 0.01f);       // la escena 3D solo se dibuja mientras se ve
         if (!Activa) return;
         if (AppAtomAR.Modo != modo) { Cerrar(false); return; }
 
@@ -94,67 +109,34 @@ public class GuiaVisual : MonoBehaviour
         marcoImagen.color = Color.Lerp(Cian, Color.white, pulso * 0.45f);
         marcoImagen.rectTransform.localScale = Vector3.one * (1f + 0.012f * pulso);
 
-        if (modo == ModoApp.Combinar) AnimarCombinar(); else AnimarExplorar();
+        int f = diorama.Animar(modo, t);
+        if (f != fase)
+        {
+            fase = f;
+            var textos = modo == ModoApp.Combinar ? TextosCombinar : TextosExplorar;
+            leyenda.text = textos[Mathf.Clamp(f, 0, textos.Length - 1)];
+        }
     }
 
-    // Explorar: entra la tarjeta → el teléfono la lee → aparece el átomo
-    void AnimarExplorar()
-    {
-        const float ciclo = 5.4f; float u = t % ciclo, salida = u > 4.7f ? 1f - (u - 4.7f) / 0.7f : 1f;
-        float a = Suave(u / 0.9f);
-        grupoA.alpha = a * 0.92f * salida;
-        tarjetaA.anchoredPosition = Vector2.Lerp(new Vector2(250f, -400f), new Vector2(0f, -70f), a);
-        tarjetaA.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(-22f, -5f, a));
-        float k = Mathf.Clamp01((u - 2.1f) / 0.5f);
-        grupoAtomo.alpha = k * salida;
-        atomo.anchoredPosition = new Vector2(0f, Mathf.Lerp(70f, 150f, Suave(k)));
-        atomo.localScale = Vector3.one * Mathf.Lerp(0.55f, 1f, Rebote(k));
-        grupoB.alpha = grupoMolecula.alpha = grupoMas.alpha = 0f;
-        Fase(u < 0.9f ? 0 : u < 2.1f ? 1 : 2,
-            "Pon una tarjeta dentro del marco", "Deja el teléfono quieto un momento", "¡Y aparece su átomo!");
-    }
-
-    // Combinar: se juntan dos tarjetas → se agrega un átomo con + → se forma la molécula
-    void AnimarCombinar()
-    {
-        const float ciclo = 6.8f; float u = t % ciclo, salida = u > 6.1f ? 1f - (u - 6.1f) / 0.7f : 1f;
-        float a = Suave(u / 1f);
-        grupoA.alpha = grupoB.alpha = a * 0.92f * salida;
-        tarjetaA.anchoredPosition = Vector2.Lerp(new Vector2(-480f, -40f), new Vector2(-150f, -75f), a);
-        tarjetaB.anchoredPosition = Vector2.Lerp(new Vector2(480f, -40f), new Vector2(150f, -75f), a);
-        tarjetaA.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(-14f, -4f, a));
-        tarjetaB.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(14f, 4f, a));
-        float k = Mathf.Clamp01((u - 1.6f) / 0.35f), fuera = 1f - Mathf.Clamp01((u - 2.9f) / 0.3f);
-        grupoMas.alpha = k * fuera * salida;
-        mas.anchoredPosition = new Vector2(-150f, 95f);
-        mas.localScale = Vector3.one * Mathf.Lerp(0.6f, 1f, Rebote(k));
-        float m = Mathf.Clamp01((u - 3.1f) / 0.5f);
-        grupoMolecula.alpha = m * salida;
-        molecula.anchoredPosition = new Vector2(0f, Mathf.Lerp(70f, 130f, Suave(m)));
-        molecula.localScale = Vector3.one * Mathf.Lerp(0.55f, 1f, Rebote(m));
-        grupoAtomo.alpha = 0f;
-        Fase(u < 1f ? 0 : u < 3.1f ? 1 : 2,
-            "Junta dos tarjetas dentro del marco", "Con + agregas los átomos que faltan", "¡Y se forma la molécula!");
-    }
-
-    void Fase(int f, string a, string b, string c)
-    {
-        if (f == fase) return;
-        fase = f; leyenda.text = f == 0 ? a : f == 1 ? b : c;
-    }
-
+    // Pistas de una sola vez en Explorar: primero "toca la carta" y, ya que la abrió, cómo mover el átomo
     void ActualizarPista()
     {
         bool enExplorar = AppAtomAR.Modo == ModoApp.Explorar;
-        if (!pistaVista && enExplorar && PanelElemento.Desplegada)
+        if (!pistaVista && enExplorar && PanelElemento.Desplegada) { pistaVista = true; PlayerPrefs.SetInt(ClavePista, 1); PlayerPrefs.Save(); }
+        if (!gestosVista && GestosAtomo.Usado) { gestosVista = true; PlayerPrefs.SetInt(ClaveGestos, 1); PlayerPrefs.Save(); }
+        bool puede = enExplorar && !Activa && PanelElemento.HayCarta && !PanelElemento.Desplegada;
+        bool verCarta = puede && !pistaVista, verGestos = puede && pistaVista && !gestosVista, ver = verCarta || verGestos;
+        if (ver)
         {
-            pistaVista = true; PlayerPrefs.SetInt(ClavePista, 1); PlayerPrefs.Save();
+            string txt = verCarta ? "Toca la carta para ver más" : "Gira el átomo con un dedo y acércalo con dos";
+            if (pistaTexto && pistaTexto.text != txt)
+            {
+                pistaTexto.text = txt;
+                var rt = (RectTransform)pistaCarta.transform;
+                rt.sizeDelta = new Vector2(pistaTexto.GetPreferredValues(txt).x + 130f, rt.sizeDelta.y);
+            }
+            pistaPunto.localScale = Vector3.one * (1f + 0.35f * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f)));
         }
-        bool ver = enExplorar && !Activa && !pistaVista && PanelElemento.HayCarta && !PanelElemento.Desplegada;
         if (pistaCarta.Visible != ver) pistaCarta.Mostrar(ver);
-        if (ver) pistaPunto.localScale = Vector3.one * (1f + 0.35f * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f)));
     }
-
-    static float Suave(float x) { x = Mathf.Clamp01(x); return 1f - (1f - x) * (1f - x) * (1f - x); }             // ease-out
-    static float Rebote(float x) { x = Mathf.Clamp01(x); const float c = 1.70158f; float y = x - 1f; return 1f + (c + 1f) * y * y * y + c * y * y; }
 }

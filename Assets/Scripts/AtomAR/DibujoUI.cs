@@ -1,5 +1,5 @@
 // AtomAR - Ilustraciones vectoriales dibujadas por código (se ven nítidas a cualquier tamaño y pueden moverse).
-// figura: "agua" (vaso con moléculas), "sal" (salero y cristales), "co2" (refresco con burbujas),
+// figura: "logo" (marca de AtomAR), "agua" (vaso con moléculas), "sal" (salero y cristales), "co2" (refresco con burbujas),
 //         "herrumbre" (clavo oxidado), "molecula" (molécula de agua), "medalla".
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +9,8 @@ public class DibujoUI : MaskableGraphic
 {
     public string figura = "agua";
     public bool animado = true;
+    [Tooltip("Solo para el logo: órbitas oscuras para usarlo sobre fondos claros")]
+    public bool sobreClaro;
 
     static readonly Color Blanco = new(0.95f, 0.96f, 1f), Rojo = new(0.95f, 0.27f, 0.31f), Cian = new(0.18f, 0.90f, 1f);
     static readonly Color Oro = new(1f, 0.78f, 0.24f), Gris = new(0.60f, 0.65f, 0.76f), Noche = new(0.08f, 0.09f, 0.20f);
@@ -33,6 +35,7 @@ public class DibujoUI : MaskableGraphic
             case "sal": Salero(); break;
             case "herrumbre": Clavo(); break;
             case "medalla": Medalla(); break;
+            case "logo": Logo(); break;
             default: Molecula(); break;
         }
         vh = null;
@@ -154,7 +157,39 @@ public class DibujoUI : MaskableGraphic
         for (int k = 0; k < 10; k++) vh.AddTriangle(i0, i0 + k + 1, i0 + k + 2);
     }
 
+    // Marca de AtomAR: la tarjeta sobre la mesa y el átomo que aparece encima de ella
+    void Logo()
+    {
+        // la tarjeta, vista acostada sobre la mesa, con su recuadro blanco al centro (como las tarjetas reales)
+        Vector2 a = new(-0.44f, -0.45f), b = new(0.44f, -0.45f), c = new(0.30f, -0.13f), d = new(-0.30f, -0.13f);
+        Cuadro(a, d, c, b, new Color(Cian.r, Cian.g, Cian.b, 0.16f));
+        Cuadro(new Vector2(-0.14f, -0.385f), new Vector2(-0.095f, -0.205f), new Vector2(0.095f, -0.205f), new Vector2(0.14f, -0.385f),
+               sobreClaro ? new Color(Cian.r, Cian.g, Cian.b, 0.55f) : new Color(1f, 1f, 1f, 0.92f));
+        Linea(a, b, 0.042f, Cian); Linea(b, c, 0.042f, Cian); Linea(c, d, 0.042f, Cian); Linea(d, a, 0.042f, Cian);
+        // el átomo que aparece encima
+        var orbita = sobreClaro ? new Color(Noche.r, Noche.g, Noche.b, 0.30f) : new Color(1f, 1f, 1f, 0.40f);
+        var o = new Vector2(0f, 0.205f);
+        float g = animado ? t * 40f : 0f;
+        Anillo(o, 0.255f, 0.022f, orbita); Anillo(o, 0.15f, 0.018f, orbita);
+        Disco(o, 0.08f, Rojo, 40);
+        Disco(o + Dir(35f + g) * 0.255f, 0.042f, Cian, 24);
+        Disco(o + Dir(215f - g * 1.6f) * 0.15f, 0.036f, Cian, 24);
+    }
+
+    static Vector2 Dir(float grados) { float r = grados * Mathf.Deg2Rad; return new Vector2(Mathf.Cos(r), Mathf.Sin(r)); }
+
     // ───────── Primitivas ─────────
+    void Anillo(Vector2 c, float r, float w, Color col, int seg = 96)
+    {
+        int i0 = vh.currentVertCount;
+        for (int k = 0; k <= seg; k++)
+        {
+            var d = Dir(k * 360f / seg);
+            Vert(c + d * (r + w * 0.5f), col); Vert(c + d * (r - w * 0.5f), col);
+        }
+        for (int k = 0; k < seg; k++) { int j = i0 + k * 2; vh.AddTriangle(j, j + 2, j + 1); vh.AddTriangle(j + 1, j + 2, j + 3); }
+    }
+
     void Vert(Vector2 p, Color col)
     {
         if (giro != 0f) { float a = giro * Mathf.Deg2Rad, c = Mathf.Cos(a), s = Mathf.Sin(a); p = new Vector2(p.x * c - p.y * s, p.x * s + p.y * c); }

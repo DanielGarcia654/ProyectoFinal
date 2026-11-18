@@ -119,6 +119,8 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     public static ElementoData Actual => instancia ? instancia.actual : null;
     /// Hay una carta a la vista / la carta está desplegada (los usa la guía para dar pistas).
     public static bool HayCarta => instancia && instancia.mostrando;
+    /// La tarjeta cuyo elemento se muestra (los gestos mueven su átomo).
+    public static ElementoTarget Elegido => instancia ? instancia.elegido : null;
     public static bool Desplegada => instancia && instancia.expandido;
 
     // ───────── Ciclo de vida ─────────

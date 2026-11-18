@@ -9,7 +9,7 @@ Autor: Gerardo Daniel García Cerda (cuenta 319044546).
 
 | Modo | Qué hace el alumno | Qué aprende |
 |---|---|---|
-| **Explorar** | Apunta a una tarjeta y ve su átomo (modelo de Bohr) animado, con una carta de datos: número atómico, masa, protones, neutrones, electrones por capa y un "¿Sabías que…?". | Estructura del átomo y dónde se encuentra cada elemento. |
+| **Explorar** | Apunta a una tarjeta y ve su átomo (modelo de Bohr) animado, con una carta de datos: número atómico, masa, protones, neutrones, electrones por capa y un "¿Sabías que…?". Con un dedo gira el átomo, con dos lo acerca y con doble toque lo regresa. | Estructura del átomo y dónde se encuentra cada elemento. |
 | **Combinar** | Junta dos tarjetas y decide con los botones + y − cuántos átomos de cada elemento hacen falta. Con la proporción correcta, los átomos se unen y aparece la molécula. | Proporciones de los compuestos y su ecuación química real. |
 | **Reto** | Contesta rondas de 10 preguntas (30 en total, 3 por elemento) y gana insignias de bronce, plata y oro. No usa la cámara. | Repaso de símbolos, protones y usos. |
 
@@ -53,6 +53,7 @@ En la barra de Unity aparece el menú **AtomAR**:
 | Montar escena principal | Crea `AtomAR_Main` con la AR Camera y los 10 Image Targets con su átomo. |
 | Montar interfaz | Vuelve a generar toda la interfaz (inicio, modos, guía, reto) y las fichas de datos. |
 | Crear datos de elementos | Regenera solo las fichas de los 10 elementos. |
+| Generar marca, ícono y pantalla de carga | Dibuja el logo y el ícono en `Assets/AtomAR_UI/Marca` y configura la pantalla de carga y el ícono de Android. |
 | Reiniciar colección (pruebas) | Deja la colección de elementos en cero. |
 | Reiniciar progreso completo (pruebas) | Borra colección, moléculas, insignias y guías vistas. |
 
@@ -70,6 +71,7 @@ Assets/
   AtomAR_Modelos/Elementos/       Átomos en FBX
   AtomAR_Modelos/Moleculas/       Moléculas en FBX
   AtomAR_UI/                      Tipografías, sprites y miniaturas de las tarjetas
+  AtomAR_UI/Marca/                Logo, símbolo e ícono de la app
   StreamingAssets/Vuforia/        Base de datos de Image Targets "AtomAR"
 Blender_Fuentes/
   AtomAR_Elementos.blend          Archivo maestro con los modelos y el script que los genera
@@ -85,12 +87,17 @@ Blender_Fuentes/
 | `PanelElemento` | Carta del elemento en Explorar: decide qué elemento mostrar, lo anima y lleva la colección. |
 | `ModoCombinar` | Detecta parejas de tarjetas, maneja los contadores, las pistas y la formación de la molécula. |
 | `Quiz` | Preguntas, rondas, racha e insignias del Reto. |
+| `GestosAtomo` | Girar, acercar y regresar el átomo con el dedo en Explorar. |
 | `GuiaVisual` | Guía animada sobre la cámara (marco iluminado y ejemplo en movimiento). |
 | `Celebracion` | Pantalla de logro al completar los 10 elementos o las 4 moléculas. |
 | `AtomoAnimado` | Hace girar las capas de electrones y latir el núcleo de cada átomo 3D. |
 | `DiagramaBohr`, `DibujoUI`, `AnilloUI` | Gráficos de la interfaz dibujados por código: mini átomo, ilustraciones y anillos de avance. |
 | `Coleccion`, `ProgresoQuiz` | Guardan el progreso en el teléfono (`PlayerPrefs`). |
 | `ElementoData`, `MoleculaData` | Definen los datos de cada elemento y molécula. |
+
+## Marca
+
+El logo muestra lo que hace la app: una tarjeta sobre la mesa y el átomo que aparece encima de ella. Hay versión para fondo oscuro (`AtomAR_Logo.png`), para fondo claro (`AtomAR_Logo_SobreClaro.png`), vertical, el símbolo solo y el ícono. La pantalla de carga muestra el logo de AtomAR con "Made with Unity" debajo.
 
 ## Modelos 3D
 
@@ -105,3 +112,7 @@ Tipografías: **Syne** e **Inter**, ambas con licencia SIL Open Font License.
 ## Privacidad
 
 La app no pide cuenta ni datos personales, no se conecta a ningún servidor y no guarda imágenes de la cámara. El progreso se guarda solo en el teléfono.
+
+
+### Guía animada en 3D
+La guía de Explorar y Combinar muestra un ejemplo en 3D (`DioramaGuia.cs`): las tarjetas reales en perspectiva, con luz y sombra suave, y los mismos modelos de átomos y moléculas de la app. Unas yemas de dedo translúcidas enseñan a girar, acercar y tocar **+1**. Se dibuja en la capa 28, en una RenderTexture, y solo mientras la guía está visible. Para regenerarla sin tocar el resto de la interfaz: **AtomAR → Actualizar guía animada**.

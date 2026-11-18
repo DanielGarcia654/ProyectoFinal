@@ -118,6 +118,7 @@ public static partial class AtomARUIBuilder
         var celebracion = MontarCelebracion(canvas, sp, brillo, syne, inter, fichas, mols, cartas);
 
         // ── Controlador de la app
+        canvasGO.AddComponent<GestosAtomo>();                // girar y acercar el átomo en Explorar
         var app = canvasGO.AddComponent<AppAtomAR>();
         app.pantallaInicio = inicioF; app.barra = barraF; app.pantallaReto = pantallaReto; app.guia = guia; app.celebracion = celebracion; app.quiz = quiz;
         app.botonesModo = botones; app.progresos = progresos; app.anillos = anillos; app.halos = halos; app.etiquetasSigue = sigue;
@@ -475,8 +476,28 @@ public static partial class AtomARUIBuilder
     }
 
     // ───────────────────────── Guía animada ─────────────────────────
+    /// Vuelve a armar solo la guía (sin tocar el resto de la interfaz ni las fichas de datos).
+    [MenuItem("AtomAR/Actualizar guía animada")]
+    public static void ReemplazarGuia()
+    {
+        var canvas = GameObject.Find("UI_AtomAR").transform;
+        var vieja = canvas.Find("GuiaVisual"); int idx = vieja ? vieja.GetSiblingIndex() : 2;
+        if (vieja) Object.DestroyImmediate(vieja.gameObject);
+        var pistaVieja = canvas.Find("PistaCarta"); if (pistaVieja) Object.DestroyImmediate(pistaVieja.gameObject);
+        var syne = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(UIDir + "/Fuentes/Syne SDF.asset");
+        var inter = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(UIDir + "/Fuentes/Inter SDF.asset");
+        var guia = MontarGuia(canvas, SpriteRedondeado(), SpriteMarco(), syne, inter, SpritesTarjetas());
+        guia.transform.SetSiblingIndex(idx);
+        canvas.Find("PistaCarta").SetSiblingIndex(idx + 1);
+        var app = canvas.GetComponent<AppAtomAR>(); app.guia = guia; EditorUtility.SetDirty(app);
+        var escena = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        EditorSceneManager.MarkSceneDirty(escena); EditorSceneManager.SaveScene(escena);
+        Debug.Log("[AtomAR] Guía animada actualizada (ejemplo en 3D).");
+    }
+
     static GuiaVisual MontarGuia(Transform canvas, Sprite sp, Sprite marcoSp, TMP_FontAsset syne, TMP_FontAsset inter, Dictionary<string, Sprite> cartas)
     {
+        var brillo = SpriteBrillo();
         var g = Nuevo("GuiaVisual", canvas); Estirar(g);
         var gF = g.gameObject.AddComponent<FundidoUI>(); gF.entrada = 0.12f;
         var oscuro = new Color(Noche.r * 0.5f, Noche.g * 0.5f, Noche.b * 0.5f, 0.72f);
@@ -487,31 +508,29 @@ public static partial class AtomARUIBuilder
         var vDer = CrearVelo("VeloDer", V(0.5f, 0.5f), V(1, 0.5f));
 
         var c = V(0.5f, 0.5f);
-        var marco = Nuevo("Marco", g); Anclar(marco, c, c, c, V(0, 80), V(520, 520));
-        var esquinas = Caja("Esquinas", marco, SpriteHueco(), oscuro, 1f); Estirar(esquinas);         // redondea las esquinas del hueco
-        var borde = Caja("Borde", marco, marcoSp, Electron, 1f); Estirar(borde);
-        var escena = Nuevo("Escena", g); Anclar(escena, c, c, c, V(0, 80), Vector2.zero);
+        var marco = Nuevo("Marco", g); Anclar(marco, c, c, c, V(0, 110), V(560, 620));
+        var esquinas = Caja("Esquinas", marco, SpriteHueco(), oscuro, 1f); Estirar(esquinas);       // redondea las esquinas del hueco
 
-        cartas.TryGetValue("01_h_hidrogeno", out var cartaH); cartas.TryGetValue("05_o_oxigeno", out var cartaO);
-        var tA = TarjetaMini("TarjetaA", escena, sp, cartaH, Hex("#2663EA"), 250);
-        var tB = TarjetaMini("TarjetaB", escena, sp, cartaO, Hex("#0990B2"), 250);
-        var atomo = Nuevo("Atomo", escena); Anclar(atomo, c, c, c, Vector2.zero, V(310, 310));
-        var bohr = atomo.gameObject.AddComponent<DiagramaBohr>(); bohr.punto = sp; bohr.capasIniciales = new[] { 1 };
-        bohr.colorNucleo = Proton; bohr.colorElectron = Electron; bohr.colorOrbita = new Color(1f, 1f, 1f, 0.5f); bohr.radioNucleo = 30f; bohr.tamElectron = 22f; bohr.velocidadCapa1 = 110f;
-        var gAtomo = atomo.gameObject.AddComponent<CanvasGroup>();
-        var mol = Nuevo("Molecula", escena); Anclar(mol, c, c, c, Vector2.zero, V(250, 250));
-        mol.gameObject.AddComponent<DibujoUI>().figura = "molecula"; var gMol = mol.gameObject.AddComponent<CanvasGroup>();
-        var mas = Caja("Mas", escena, sp, Electron, Pil(76)); Anclar(mas, c, c, c, Vector2.zero, V(150, 76));
-        var masT = Txt("Texto", mas, syne, "+1", 46, TintaOsc, TextAlignmentOptions.Center); Estirar(masT.rectTransform);
-        var gMas = mas.gameObject.AddComponent<CanvasGroup>();
+        // el ejemplo 3D se dibuja aquí; encima van el botón +1 y los dedos
+        var escena = Nuevo("Escena", g); Anclar(escena, c, c, c, V(0, 110), Vector2.zero);
+        var vistaRT = Nuevo("Vista3D", escena); Anclar(vistaRT, c, c, c, Vector2.zero, V(560, 620));
+        var vista = vistaRT.gameObject.AddComponent<RawImage>(); vista.raycastTarget = false;
+        var mas = Nuevo("Mas", vistaRT); Anclar(mas, c, c, c, Vector2.zero, V(150, 76));
+        var masG = mas.gameObject.AddComponent<CanvasGroup>(); masG.alpha = 0f; masG.blocksRaycasts = false;
+        var masSombra = Caja("Sombra", mas, brillo, new Color(0.01f, 0.02f, 0.06f, 0.55f), 1f); masSombra.GetComponent<Image>().type = Image.Type.Simple;
+        Anclar(masSombra, c, c, c, V(4, -16), V(230, 140));
+        var masFondo = Caja("Fondo", mas, sp, Electron, Pil(76)); Estirar(masFondo);
+        var masT = Txt("Texto", masFondo, syne, "+1", 46, TintaOsc, TextAlignmentOptions.Center); Estirar(masT.rectTransform);
+        var dedos = new[] { Dedo("Dedo1", vistaRT, sp, brillo), Dedo("Dedo2", vistaRT, sp, brillo) };
+        var borde = Caja("Borde", g, marcoSp, Electron, 1f); Anclar(borde, c, c, c, V(0, 110), V(560, 620));
 
         var leyenda = Txt("Leyenda", g, syne, "", 50, Papel, TextAlignmentOptions.Top);
-        Anclar(leyenda.rectTransform, c, c, V(0.5f, 1), V(0, -260), V(960, 130)); leyenda.characterSpacing = -2f; leyenda.lineSpacing = -10f;
-        var ent = Caja("Entendido", g, marcoSp, Papel, Pil(92)); Anclar(ent, c, c, c, V(0, -400), V(330, 92));
+        Anclar(leyenda.rectTransform, c, c, V(0.5f, 1), V(0, -286), V(960, 130)); leyenda.characterSpacing = -2f; leyenda.lineSpacing = -10f;
+        var ent = Caja("Entendido", g, marcoSp, Papel, Pil(92)); Anclar(ent, c, c, c, V(0, -414), V(330, 92));
         var entT = Txt("Texto", ent, inter, "Entendido", 34, Papel, TextAlignmentOptions.Center, bold: true); Estirar(entT.rectTransform);
         var bEnt = Boton(ent);
 
-        // Pista "toca la carta" (vive fuera del fundido de la guía)
+        // Pista de una sola vez (vive fuera del fundido de la guía)
         var pista = Caja("PistaCarta", canvas, sp, new Color(Noche.r, Noche.g, Noche.b, 0.92f), Pil(84));
         Anclar(pista, V(0.5f, 0), V(0.5f, 0), V(0.5f, 0), V(0, 372), V(600, 84));
         var pistaF = pista.gameObject.AddComponent<FundidoUI>(); pistaF.desplazamiento = -16f;
@@ -520,14 +539,45 @@ public static partial class AtomARUIBuilder
         var pT = Txt("Texto", pista, inter, "Toca la carta para ver más", 34, Papel, TextAlignmentOptions.MidlineLeft, bold: true);
         Anclar(pT.rectTransform, Vector2.zero, Vector2.one, V(0, 0.5f), V(84, 0), V(-100, 0));
 
+        var dio = g.gameObject.AddComponent<DioramaGuia>();
+        dio.vista = vista; dio.dedos = dedos; dio.botonMas = mas; dio.sombra = brillo.texture;
+        dio.cartaC = TarjetaNitida("03_c_carbono"); dio.cartaH = TarjetaNitida("01_h_hidrogeno"); dio.cartaO = TarjetaNitida("05_o_oxigeno");
+        dio.atomoC = Modelo3D("Elementos/C_Carbono"); dio.atomoH = Modelo3D("Elementos/H_Hidrogeno"); dio.atomoO = Modelo3D("Elementos/O_Oxigeno");
+        dio.moleculaAgua = Modelo3D("Moleculas/Mol_H2O_Agua");
+
         var guia = g.gameObject.AddComponent<GuiaVisual>();
         guia.fundido = gF; guia.veloArriba = vArriba; guia.veloAbajo = vAbajo; guia.veloIzq = vIzq; guia.veloDer = vDer;
         guia.marco = marco; guia.escena = escena; guia.marcoImagen = borde.GetComponent<Image>();
-        guia.tarjetaA = tA; guia.tarjetaB = tB; guia.atomo = atomo; guia.molecula = mol; guia.mas = mas;
-        guia.grupoA = tA.GetComponent<CanvasGroup>(); guia.grupoB = tB.GetComponent<CanvasGroup>(); guia.grupoAtomo = gAtomo; guia.grupoMolecula = gMol; guia.grupoMas = gMas;
-        guia.leyenda = leyenda; guia.entendido = bEnt; guia.pistaCarta = pistaF; guia.pistaPunto = pPunto;
+        guia.diorama = dio; guia.leyenda = leyenda; guia.entendido = bEnt; guia.pistaCarta = pistaF; guia.pistaPunto = pPunto;
         return guia;
     }
+
+    /// Yema de dedo translúcida con sombra y onda, como los indicadores de toque.
+    static RectTransform Dedo(string nombre, RectTransform padre, Sprite sp, Sprite brillo)
+    {
+        var c = V(0.5f, 0.5f);
+        var d = Nuevo(nombre, padre); Anclar(d, c, c, c, Vector2.zero, V(92, 92));
+        var g = d.gameObject.AddComponent<CanvasGroup>(); g.alpha = 0f; g.blocksRaycasts = false;
+        var sombra = Caja("Sombra", d, brillo, new Color(0.01f, 0.02f, 0.06f, 0.6f), 1f); sombra.GetComponent<Image>().type = Image.Type.Simple;
+        Anclar(sombra, c, c, c, V(10, -18), V(170, 170));
+        var onda = Nuevo("Onda", d); Anclar(onda, c, c, c, Vector2.zero, V(96, 96));
+        var anillo = onda.gameObject.AddComponent<AnilloUI>(); anillo.grosor = 5f; anillo.color = new Color(1, 1, 1, 0); anillo.raycastTarget = false;
+        var yema = Caja("Yema", d, sp, new Color(1f, 1f, 1f, 0.62f), Pil(92)); Anclar(yema, c, c, c, Vector2.zero, V(92, 92));
+        var borde = Nuevo("Borde", yema); Estirar(borde);
+        var b = borde.gameObject.AddComponent<AnilloUI>(); b.grosor = 3f; b.color = new Color(1f, 1f, 1f, 0.95f); b.raycastTarget = false;
+        var reflejo = Caja("Reflejo", yema, sp, new Color(1f, 1f, 1f, 0.95f), Pil(26)); Anclar(reflejo, c, c, c, V(-17, 19), V(26, 26));
+        return d;
+    }
+
+    /// Las tarjetas de la guía se ven grandes: se importan con más resolución.
+    static Texture2D TarjetaNitida(string nombre)
+    {
+        string p = $"{UIDir}/Tarjetas/{nombre}.jpg";
+        if (AssetImporter.GetAtPath(p) is TextureImporter imp && imp.maxTextureSize < 1024) { imp.maxTextureSize = 1024; imp.SaveAndReimport(); }
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(p);
+    }
+
+    static GameObject Modelo3D(string ruta) => AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/AtomAR_Modelos/{ruta}.fbx");
 
     // ───────────────────────── Celebración ─────────────────────────
     static Celebracion MontarCelebracion(Transform canvas, Sprite sp, Sprite brillo, TMP_FontAsset syne, TMP_FontAsset inter,
