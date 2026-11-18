@@ -1,10 +1,13 @@
-// AtomAR - Gestos sobre el átomo en el modo Explorar.
-// • Un dedo: gira el átomo como una bola, siempre respecto a la pantalla. Al soltar sigue girando un poco por inercia.
+// AtomAR - Gestos sobre el objeto 3D que se está mirando.
+//   Explorar → el átomo del elemento elegido en la carta.
+//   Combinar → la molécula ya formada.
+// • Un dedo: gira como una bola, siempre respecto a la pantalla. Al soltar sigue girando un poco por inercia.
 // • Dos dedos: pellizcar para acercar o alejar (entre 0.6x y 2.5x). El átomo sigue apoyado sobre su tarjeta.
-// • Doble toque: el átomo vuelve suavemente a como estaba.
-// • En el editor: arrastrar con el mouse lo gira, la rueda lo acerca y el doble clic lo regresa.
-// Los toques que empiezan sobre la interfaz (carta, botones) no mueven el átomo.
-// Cuando la tarjeta se pierde o se sale del modo, el átomo vuelve a su posición original.
+// • Doble toque: vuelve suavemente a como estaba.
+// • En el editor: arrastrar con el mouse gira, la rueda acerca y el doble clic regresa.
+// Los toques que empiezan sobre la interfaz (carta, botones) no mueven nada.
+// Solo hay un objetivo a la vez: si cambia (otro elemento, la molécula se deshace, se sale del modo), el anterior
+// regresa a su pose original y la inercia se reinicia, así nunca quedan dos objetos "agarrados".
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -24,14 +27,15 @@ public class GestosAtomo : MonoBehaviour
     /// Ya se hizo al menos un gesto (la guía deja de mostrar la pista).
     public static bool Usado { get; private set; }
 
-    class Estado { public ElementoTarget tarjeta; public Quaternion rot; public Vector3 esc, pos; public float zoom = 1f; public bool regresando; }
+    // Objetivo actual y su pose original
+    Transform objetivo;
+    Quaternion baseRot = Quaternion.identity; Vector3 baseEsc = Vector3.one, basePos;
+    float zoom = 1f; bool regresando;
 
-    readonly Dictionary<Transform, Estado> estados = new();
-    readonly List<Transform> quitar = new();
     readonly HashSet<int> dedos = new();
     readonly List<TouchControl> activos = new();
     readonly List<RaycastResult> golpes = new();
-    Transform ultimo;
+    PointerEventData evento;
     Vector2 vGiro;                       // grados por segundo
     float distPrevia = -1f, ultimoToque = -1f;
     Vector2 posUltimoToque;
@@ -43,74 +47,72 @@ public class GestosAtomo : MonoBehaviour
     void Update()
     {
         float dt = Time.unscaledDeltaTime;
-        var tarjeta = AppAtomAR.Modo == ModoApp.Explorar && !GuiaVisual.Activa ? PanelElemento.Elegido : null;
-        var modelo = tarjeta && tarjeta.Visible ? tarjeta.Modelo : null;
-        Limpiar();
+        var nuevo = BuscarObjetivo(out var tarjeta);
+        if (nuevo != objetivo) CambiarObjetivo(nuevo, tarjeta);
 
         var cam = Camera.main;
-        if (!modelo || !cam) { dedos.Clear(); vGiro = Vector2.zero; distPrevia = -1f; arrastreMouse = false; return; }
-        if (modelo != ultimo) { ultimo = modelo; vGiro = Vector2.zero; }
-        var e = Obtener(modelo, tarjeta);
+        if (!objetivo || !cam) { dedos.Clear(); vGiro = Vector2.zero; distPrevia = -1f; arrastreMouse = false; return; }
 
         Vector2 giro = Vector2.zero; float factorZoom = 1f; bool tocando = false, reset = false;
         LeerToques(ref giro, ref factorZoom, ref tocando, ref reset);
         LeerMouse(ref giro, ref factorZoom, ref tocando, ref reset);
 
-        if (reset) { e.regresando = true; vGiro = Vector2.zero; }
-        else if (giro != Vector2.zero || factorZoom != 1f) { e.regresando = false; Usado = true; }
+        if (reset) { regresando = true; vGiro = Vector2.zero; }
+        else if (giro != Vector2.zero || factorZoom != 1f) { regresando = false; Usado = true; }
 
         // Giro: mientras se toca sigue al dedo; al soltar continúa con la velocidad que llevaba y se frena
         Vector2 grados = giro * (gradosPorPantalla / Mathf.Max(1, Screen.width));
         if (tocando) { if (dt > 0f) vGiro = Vector2.Lerp(vGiro, grados / dt, 0.4f); }
         else { grados = vGiro * dt; vGiro *= Mathf.Exp(-friccion * dt); }
 
-        var padre = modelo.parent;
-        if (!e.regresando && grados.sqrMagnitude > 1e-6f)
+        var padre = objetivo.parent;
+        if (!regresando && grados.sqrMagnitude > 1e-6f && padre)
         {
             Vector3 arriba = padre.InverseTransformDirection(cam.transform.up);
             Vector3 derecha = padre.InverseTransformDirection(cam.transform.right);
-            modelo.localRotation = Quaternion.AngleAxis(-grados.x, arriba) * Quaternion.AngleAxis(grados.y, derecha) * modelo.localRotation;
+            objetivo.localRotation = Quaternion.AngleAxis(-grados.x, arriba) * Quaternion.AngleAxis(grados.y, derecha) * objetivo.localRotation;
         }
 
-        e.zoom = Mathf.Clamp(e.zoom * factorZoom, zoomMin, zoomMax);
-        if (e.regresando)
+        zoom = Mathf.Clamp(zoom * factorZoom, zoomMin, zoomMax);
+        if (regresando)
         {
             float a = 1f - Mathf.Exp(-12f * dt);
-            modelo.localRotation = Quaternion.Slerp(modelo.localRotation, e.rot, a);
-            e.zoom = Mathf.Lerp(e.zoom, 1f, a);
-            if (Quaternion.Angle(modelo.localRotation, e.rot) < 0.2f && Mathf.Abs(e.zoom - 1f) < 0.002f)
-            { modelo.localRotation = e.rot; e.zoom = 1f; e.regresando = false; }
+            objetivo.localRotation = Quaternion.Slerp(objetivo.localRotation, baseRot, a);
+            zoom = Mathf.Lerp(zoom, 1f, a);
+            if (Quaternion.Angle(objetivo.localRotation, baseRot) < 0.2f && Mathf.Abs(zoom - 1f) < 0.002f)
+            { objetivo.localRotation = baseRot; zoom = 1f; regresando = false; }
         }
-        modelo.localScale = e.esc * e.zoom;
-        modelo.localPosition = new Vector3(e.pos.x, e.pos.y * e.zoom, e.pos.z);    // al crecer sigue apoyado sobre la tarjeta
+        objetivo.localScale = baseEsc * zoom;
+        objetivo.localPosition = new Vector3(basePos.x, basePos.y * zoom, basePos.z);    // al crecer sigue apoyado sobre la tarjeta
     }
 
-    Estado Obtener(Transform modelo, ElementoTarget tarjeta)
+    static Transform BuscarObjetivo(out ElementoTarget tarjeta)
     {
-        if (!estados.TryGetValue(modelo, out var e))
+        tarjeta = null;
+        if (GuiaVisual.Activa) return null;
+        if (AppAtomAR.Modo == ModoApp.Explorar)
         {
-            e = new Estado { tarjeta = tarjeta, rot = modelo.localRotation, esc = modelo.localScale, pos = modelo.localPosition };
-            estados[modelo] = e;
+            var t = PanelElemento.Elegido;
+            if (t && t.Visible && t.Modelo) { tarjeta = t; return t.Modelo; }
+            return null;
         }
-        return e;
+        if (AppAtomAR.Modo == ModoApp.Combinar) return ModoCombinar.ObjetivoGestos;
+        return null;
     }
 
-    // Los átomos que ya no están a la vista, o todos si se sale de Explorar, vuelven a como estaban
-    void Limpiar()
+    void CambiarObjetivo(Transform nuevo, ElementoTarget tarjeta)
     {
-        bool enExplorar = AppAtomAR.Modo == ModoApp.Explorar;
-        quitar.Clear();
-        foreach (var kv in estados)
-        {
-            var t = kv.Key; var e = kv.Value;
-            if (t && e.tarjeta && e.tarjeta.Visible && enExplorar) continue;
-            if (t) { t.localRotation = e.rot; t.localScale = e.esc; t.localPosition = e.pos; }
-            quitar.Add(t);
-        }
-        foreach (var t in quitar) estados.Remove(t);
+        // el anterior vuelve exactamente a como estaba
+        if (objetivo) { objetivo.localRotation = baseRot; objetivo.localScale = baseEsc; objetivo.localPosition = basePos; }
+        objetivo = nuevo; zoom = 1f; regresando = false; vGiro = Vector2.zero; distPrevia = -1f;
+        if (!objetivo) return;
+        if (tarjeta) { baseRot = tarjeta.BaseRot; baseEsc = tarjeta.BaseEsc; basePos = tarjeta.BasePos; }
+        else { baseRot = objetivo.localRotation; baseEsc = objetivo.localScale; basePos = objetivo.localPosition; }
     }
 
-    void LeerToques(ref Vector2 giro, ref float zoom, ref bool tocando, ref bool reset)
+    void OnDisable() => CambiarObjetivo(null, null);
+
+    void LeerToques(ref Vector2 giro, ref float zoomF, ref bool tocando, ref bool reset)
     {
         var pantalla = Touchscreen.current;
         if (pantalla == null) return;
@@ -137,16 +139,16 @@ public class GestosAtomo : MonoBehaviour
         else if (activos.Count >= 2)
         {
             float d = Vector2.Distance(activos[0].position.ReadValue(), activos[1].position.ReadValue());
-            if (distPrevia > 0f && d > 0f) zoom *= d / distPrevia;
+            if (distPrevia > 0f && d > 0f) zoomF *= d / distPrevia;
             distPrevia = d; tocando = true;
         }
         else distPrevia = -1f;
     }
 
-    void LeerMouse(ref Vector2 giro, ref float zoom, ref bool tocando, ref bool reset)
+    void LeerMouse(ref Vector2 giro, ref float zoomF, ref bool tocando, ref bool reset)
     {
         var m = Mouse.current;
-        if (m == null) return;
+        if (m == null || Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) return;
         var p = m.position.ReadValue();
         if (m.leftButton.wasPressedThisFrame)
         {
@@ -156,7 +158,7 @@ public class GestosAtomo : MonoBehaviour
         if (!m.leftButton.isPressed) arrastreMouse = false;
         if (arrastreMouse) { giro += m.delta.ReadValue(); tocando = true; }
         float rueda = m.scroll.ReadValue().y;
-        if (rueda != 0f && !SobreUI(p)) zoom *= Mathf.Pow(1.0015f, rueda);
+        if (rueda != 0f && !SobreUI(p)) zoomF *= Mathf.Pow(1.0015f, rueda);
     }
 
     bool DobleToque(Vector2 p)
@@ -171,8 +173,10 @@ public class GestosAtomo : MonoBehaviour
     {
         var es = EventSystem.current;
         if (!es) return false;
+        evento ??= new PointerEventData(es);
+        evento.Reset(); evento.position = p;
         golpes.Clear();
-        es.RaycastAll(new PointerEventData(es) { position = p }, golpes);
+        es.RaycastAll(evento, golpes);
         foreach (var g in golpes) if (g.module is GraphicRaycaster) return true;
         return false;
     }

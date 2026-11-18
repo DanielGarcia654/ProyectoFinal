@@ -173,18 +173,32 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         else pendiente = null;
     }
 
+    // La tarjeta más cercana al centro de la pantalla (prefiere las que la cámara ve ahora mismo).
+    // Histéresis: para quitarle el lugar a la elegida, otra tiene que estar claramente más al centro,
+    // así la carta no salta entre dos tarjetas que quedan casi igual de cerca.
+    const float MargenCentro = 0.012f;                 // en unidades de viewport²  (≈ 11 % de la pantalla)
     ElementoTarget MasAlCentro()
     {
         if (!camara) camara = Camera.main;
-        var candidatos = visibles.Where(v => v && v.Rastreado).ToList();
-        if (candidatos.Count == 0) candidatos = visibles.Where(v => v).ToList();
-        if (candidatos.Count == 0) return null;
-        if (!camara) return candidatos[^1];
-        return candidatos.OrderBy(v =>
+        bool hayRastreadas = false;
+        foreach (var v in visibles) if (v && v.Rastreado) { hayRastreadas = true; break; }
+        ElementoTarget mejor = null; float dMejor = float.MaxValue, dElegido = float.MaxValue;
+        foreach (var v in visibles)
         {
-            var p = camara.WorldToViewportPoint(v.transform.position);
-            return p.z < 0 ? float.MaxValue : (new Vector2(p.x, p.y) - new Vector2(0.5f, 0.5f)).sqrMagnitude;
-        }).First();
+            if (!v || (hayRastreadas && !v.Rastreado)) continue;
+            float d = DistCentro(v);
+            if (v == elegido) dElegido = d;
+            if (d < dMejor) { dMejor = d; mejor = v; }
+        }
+        if (elegido && mejor != elegido && dElegido < float.MaxValue && dMejor > dElegido - MargenCentro) return elegido;
+        return mejor;
+    }
+
+    float DistCentro(ElementoTarget v)
+    {
+        if (!camara) return 0f;
+        var p = camara.WorldToViewportPoint(v.transform.position);
+        return p.z < 0 ? float.MaxValue * 0.5f : (new Vector2(p.x, p.y) - new Vector2(0.5f, 0.5f)).sqrMagnitude;
     }
 
     public void AlternarDetalle()
@@ -270,13 +284,24 @@ public class PanelElemento : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     }
 
     // Pastillas para cambiar entre tarjetas visibles (ordenadas por número atómico para que no brinquen de lugar)
+    readonly List<ElementoTarget> lista = new();
     void ActualizarSelector(float dt)
     {
         if (!selector || pastillas == null) return;
-        var lista = visibles.Where(v => v && v.datos).OrderBy(v => v.datos.numeroAtomico).Take(pastillas.Length).ToList();
+        // lista ordenada por número atómico, sin crear basura cada cuadro
+        lista.Clear();
+        foreach (var v in visibles)
+        {
+            if (!v || !v.datos) continue;
+            int i = 0; while (i < lista.Count && lista[i].datos.numeroAtomico < v.datos.numeroAtomico) i++;
+            lista.Insert(i, v);
+        }
+        if (lista.Count > pastillas.Length) lista.RemoveRange(pastillas.Length, lista.Count - pastillas.Length);
         bool mostrar = mostrando && lista.Count > 1 && AppAtomAR.Modo == ModoApp.Explorar;
 
-        if (!lista.SequenceEqual(enPastillas))
+        bool igual = lista.Count == enPastillas.Count;
+        for (int i = 0; igual && i < lista.Count; i++) igual = lista[i] == enPastillas[i];
+        if (!igual)
         {
             enPastillas.Clear(); enPastillas.AddRange(lista);
             for (int i = 0; i < pastillas.Length; i++)

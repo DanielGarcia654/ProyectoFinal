@@ -101,7 +101,8 @@ public class GuiaVisual : MonoBehaviour
         if (AppAtomAR.Modo != modo) { Cerrar(false); return; }
 
         // ¿Ya lo logró de verdad? Entonces la guía sobra.
-        int visibles = ElementoTarget.Todos.Count(x => x && x.Visible);
+        int visibles = 0;
+        foreach (var x in ElementoTarget.Todos) if (x && x.Visible) visibles++;
         if (!manual && ((modo == ModoApp.Explorar && visibles >= 1) || (modo == ModoApp.Combinar && visibles >= 2))) { Cerrar(true); return; }
 
         t += Time.unscaledDeltaTime * velocidad;

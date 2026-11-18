@@ -4,6 +4,9 @@
 // • Si la cantidad no es la correcta, una pista dice qué falta o qué sobra.
 // • Cuando la proporción es la de la receta, los átomos se juntan entre las tarjetas y aparece la molécula.
 //   (Vuforia no puede rastrear dos copias de la misma tarjeta, por eso los átomos extra se agregan con el botón.)
+// • La molécula formada se puede girar y acercar con los dedos (GestosAtomo actúa sobre su pivote).
+// • Una tarjeta que la cámara deja de ver mientras ve la otra deja de contar como visible (ver ElementoTarget),
+//   así que quitar una tarjeta rápido suelta la pareja en lugar de dejar un átomo flotando.
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -61,7 +64,14 @@ public class ModoCombinar : MonoBehaviour
     static readonly float[] Factor = { 1f, 0.62f, 0.5f, 0.42f };
     static readonly Color Velo = new(1f, 1f, 1f, 0.08f), Tenue = new(0.60f, 0.63f, 0.78f), Verde = new(0.21f, 0.82f, 0.50f);
 
+    static ModoCombinar instancia;
+    /// Lo que los gestos pueden mover en Combinar: la molécula, solo cuando ya está formada y a la vista.
+    public static Transform ObjetivoGestos =>
+        instancia && instancia.estado == Estado.Formada && instancia.pivote && instancia.pivote.gameObject.activeInHierarchy ? instancia.pivote : null;
+
     Estado estado = Estado.Ninguno;
+    Transform pivote;
+    readonly List<ElementoTarget> visibles = new();
     string claveMensaje;
     Grupo gA, gB;
     MoleculaData receta;
@@ -71,6 +81,7 @@ public class ModoCombinar : MonoBehaviour
 
     void Awake()
     {
+        instancia = this;
         masA.onClick.AddListener(() => Cambiar(gA, +1));
         menosA.onClick.AddListener(() => Cambiar(gA, -1));
         masB.onClick.AddListener(() => Cambiar(gB, +1));
@@ -78,6 +89,7 @@ public class ModoCombinar : MonoBehaviour
     }
 
     void OnDisable() => Soltar();
+    void OnDestroy() { if (instancia == this) instancia = null; }
 
     void Update()
     {
@@ -90,7 +102,8 @@ public class ModoCombinar : MonoBehaviour
 
         float dt = Time.unscaledDeltaTime, ahora = Time.unscaledTime;
         tEstado += dt;
-        var visibles = ElementoTarget.Todos.Where(t => t && t.Visible && t.datos).ToList();
+        visibles.Clear();
+        foreach (var t in ElementoTarget.Todos) if (t && t.Visible && t.datos) visibles.Add(t);
 
         // ¿Sigue a la vista la pareja con la que estábamos trabajando?
         bool parALaVista = gA != null && gA.t && gB.t && gA.t.Visible && gB.t.Visible;
@@ -258,7 +271,8 @@ public class ModoCombinar : MonoBehaviour
         var g = new Grupo { t = t, original = t.Modelo };
         if (g.original)
         {
-            g.basePos = g.original.localPosition; g.baseEscala = g.original.localScale;
+            t.RestaurarModelo();                       // aunque lo hayan girado o acercado en Explorar
+            g.basePos = t.BasePos; g.baseEscala = t.BaseEsc;
             g.atomos.Add(g.original);
         }
         return g;
@@ -285,6 +299,7 @@ public class ModoCombinar : MonoBehaviour
             if (ultimo) Destroy(ultimo.gameObject);
         }
         tEstado = 0f;
+        g.t.RefrescarDibujo();                          // los átomos nuevos toman la visibilidad de su tarjeta
         PintarArmar(true);
     }
 
@@ -338,8 +353,10 @@ public class ModoCombinar : MonoBehaviour
     {
         if (molecula) Destroy(molecula.gameObject);
         molecula = new GameObject("Molecula_" + receta.id).transform;
+        pivote = new GameObject("Gestos").transform;            // los dedos giran y acercan este pivote
+        pivote.SetParent(molecula, false);
         if (!receta.modelo) return;
-        var m = Instantiate(receta.modelo, molecula).transform;
+        var m = Instantiate(receta.modelo, pivote).transform;
         m.localPosition = Vector3.zero; m.localRotation = Quaternion.identity;
         // se ajusta para que mida 0.9 anchos de tarjeta y quede centrada en su ancla
         var rends = m.GetComponentsInChildren<Renderer>();
@@ -355,7 +372,7 @@ public class ModoCombinar : MonoBehaviour
     /// Vuelve a 1 átomo por tarjeta, sin soltar la pareja.
     void Reiniciar()
     {
-        if (molecula) { Destroy(molecula.gameObject); molecula = null; }
+        if (molecula) { Destroy(molecula.gameObject); molecula = null; pivote = null; }
         Restaurar(gA); Restaurar(gB);
         if (gA?.original) gA.atomos.Add(gA.original);
         if (gB?.original) gB.atomos.Add(gB.original);
@@ -364,7 +381,7 @@ public class ModoCombinar : MonoBehaviour
     /// Suelta la pareja y deja las tarjetas como estaban.
     void Soltar()
     {
-        if (molecula) { Destroy(molecula.gameObject); molecula = null; }
+        if (molecula) { Destroy(molecula.gameObject); molecula = null; pivote = null; }
         Restaurar(gA); Restaurar(gB);
         gA = gB = null; receta = null; invalidoDesde = -1f;
     }
@@ -377,7 +394,8 @@ public class ModoCombinar : MonoBehaviour
         if (g.original)
         {
             g.original.gameObject.SetActive(true);
-            g.original.localPosition = g.basePos; g.original.localScale = g.baseEscala;
+            if (g.t) g.t.RestaurarModelo();
+            else { g.original.localPosition = g.basePos; g.original.localScale = g.baseEscala; }
         }
     }
 }

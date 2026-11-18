@@ -5,6 +5,8 @@
 //   Reto     → preguntas e insignias, sin cámara (Quiz)
 // Ningún modo está bloqueado: el inicio solo marca con luz cuál conviene seguir, y en la barra superior
 // hay un botón para saltar al siguiente modo sin volver al inicio. Al completar un modo aparece la celebración.
+// Progreso: al cambiar VersionDatos se borra el progreso guardado de instalaciones anteriores (una sola vez).
+// Para demos y pruebas con usuarios: mantener presionado el título "AtomAR" del inicio 3 s borra todo el progreso.
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -43,9 +45,29 @@ public class AppAtomAR : MonoBehaviour
     static readonly Color Cian = new(0.18f, 0.90f, 1f), Rojo = new(0.95f, 0.27f, 0.31f), Oro = new(1f, 0.78f, 0.24f);
     static readonly Color TintaOscura = new(0.08f, 0.09f, 0.20f);
     const string ClaveElementos = "AtomAR.celebrado.elementos", ClaveMoleculas = "AtomAR.celebrado.moleculas";
+    const string ClaveVersion = "AtomAR.versionDatos";
+    const int VersionDatos = 2;                 // súbelo para que una nueva versión empiece desde cero
+    const float SegundosReinicio = 3f;
 
     int recomendado;
     float esperaLogro = -1f;
+    TMP_Text tituloInicio; Color tituloColor; float presionado = -1f; bool habiaToque;
+
+    /// Borra colección, moléculas, puntos, guías vistas y celebraciones.
+    public static void BorrarProgreso()
+    {
+        Coleccion.Reiniciar(); ProgresoQuiz.Reiniciar(); GuiaVisual.Olvidar(); OlvidarLogros();
+        PlayerPrefs.Save();
+    }
+
+    // Antes de cargar la escena: si el progreso guardado es de otra versión de la app, se empieza de cero
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void RevisarVersionDatos()
+    {
+        if (PlayerPrefs.GetInt(ClaveVersion, 0) == VersionDatos) return;
+        BorrarProgreso();
+        PlayerPrefs.SetInt(ClaveVersion, VersionDatos); PlayerPrefs.Save();
+    }
 
     /// Color que identifica a cada modo.
     public static Color ColorModo(ModoApp m) => m == ModoApp.Combinar ? Rojo : m == ModoApp.Reto ? Oro : Cian;
@@ -75,6 +97,8 @@ public class AppAtomAR : MonoBehaviour
         botonAtras.onClick.AddListener(Atras);
         botonAyuda.onClick.AddListener(() => guia.Mostrar(Modo, true));
         botonSiguiente.onClick.AddListener(() => Cambiar(Siguiente(Modo), false));
+        foreach (var t in pantallaInicio.GetComponentsInChildren<TMP_Text>(true))
+            if (t.text == "AtomAR") { tituloInicio = t; tituloColor = t.color; break; }
     }
 
     void Start() => Cambiar(ModoApp.Inicio, true);
@@ -94,6 +118,39 @@ public class AppAtomAR : MonoBehaviour
         siguienteHalo.alpha = Mathf.MoveTowards(siguienteHalo.alpha, Completo(Modo) ? 0.35f + 0.5f * pulso : 0f, dt * 3f);
 
         RevisarLogros(dt);
+        RevisarReinicioOculto(dt);
+    }
+
+    // Mantener presionado el título del inicio: el título se agranda y se tiñe de cian; a los 3 s se borra el progreso
+    void RevisarReinicioOculto(float dt)
+    {
+        if (!tituloInicio) return;
+        Vector2? punto = null;
+        if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.isPressed) punto = Touchscreen.current.primaryTouch.position.ReadValue();
+        else if (Mouse.current != null && Mouse.current.leftButton.isPressed) punto = Mouse.current.position.ReadValue();
+        var canvas = tituloInicio.canvas;
+        var cam = canvas && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+        bool sobre = Modo == ModoApp.Inicio && punto.HasValue && RectTransformUtility.RectangleContainsScreenPoint(tituloInicio.rectTransform, punto.Value, cam);
+
+        bool empezo = punto.HasValue && !habiaToque;          // el dedo acaba de bajar (solo cuenta si empieza sobre el título)
+        habiaToque = punto.HasValue;
+        if (sobre && presionado >= 0f) presionado += dt;
+        else if (sobre && empezo) presionado = 0f;
+        else if (!sobre) presionado = -1f;
+
+        float k = presionado < 0f ? 0f : Mathf.Clamp01(presionado / SegundosReinicio);
+        if (presionado >= SegundosReinicio)
+        {
+            presionado = -2f;                              // no repetir hasta soltar
+            BorrarProgreso(); RefrescarInicio();
+            tituloInicio.rectTransform.localScale = Vector3.one * 1.12f;
+            tituloInicio.color = Cian;
+            return;
+        }
+        if (presionado == -2f && sobre) return;
+        // vuelve suave a su estado normal
+        tituloInicio.rectTransform.localScale = Vector3.Lerp(tituloInicio.rectTransform.localScale, Vector3.one * (1f + 0.06f * k), dt * 12f);
+        tituloInicio.color = Color.Lerp(tituloInicio.color, Color.Lerp(tituloColor, Cian, k), dt * 12f);
     }
 
     // Celebra una sola vez cuando se juntan los 10 elementos o las 4 moléculas

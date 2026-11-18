@@ -1,8 +1,8 @@
 // AtomAR - Genera la marca de la app y configura la pantalla de carga y el ícono de Android.
 // Menú: AtomAR > Generar marca, ícono y pantalla de carga
 //
-// La marca se dibuja con los mismos componentes de la interfaz (DibujoUI y la tipografía Syne), así que coincide
-// con la app y se puede regenerar si algo cambia. Archivos que produce en Assets/AtomAR_UI/Marca:
+// El símbolo es un render 3D (tarjeta de RA con el átomo flotando) guardado en Marca/Fuente3D; el nombre usa la
+// tipografía Syne de la app. Se puede regenerar si algo cambia. Archivos que produce en Assets/AtomAR_UI/Marca:
 //   AtomAR_Simbolo.png          símbolo solo, fondo transparente
 //   AtomAR_Logo.png             símbolo + nombre, para fondos oscuros
 //   AtomAR_Logo_SobreClaro.png  símbolo + nombre, para fondos claros (documentos, registro)
@@ -35,7 +35,7 @@ public static class AtomARMarca
         Guardar("AtomAR_Logo", Recortar(Transparente(2600, 900, r => Horizontal(r, syne, Papel, false)), 48));
         Guardar("AtomAR_Logo_SobreClaro", Recortar(Transparente(2600, 900, r => Horizontal(r, syne, Tinta, true)), 48));
         Guardar("AtomAR_Logo_Vertical", Recortar(Transparente(1400, 1400, r => Vertical(r, syne)), 48));
-        Guardar("AtomAR_Icono", Render(1024, 1024, Noche, r => Simbolo(r, new Vector2(0f, 8f), 780f, false)));
+        File.Copy(Fuente3D + "/AtomAR_Icono3D.png", Dir + "/AtomAR_Icono.png", true);                                  // ícono 3D con su resplandor de fondo
         Guardar("AtomAR_Icono_Frente", Transparente(1024, 1024, r => Simbolo(r, new Vector2(0f, 6f), 560f, false)));   // zona segura del ícono adaptativo
         Guardar("AtomAR_Icono_Fondo", Liso(432, 432, Noche));
 
@@ -47,13 +47,16 @@ public static class AtomARMarca
         Debug.Log("[AtomAR] Marca generada en " + Dir + "; pantalla de carga e ícono configurados.");
     }
 
+    const string Fuente3D = Dir + "/Fuente3D";
+    static Sprite Simbolo3D => AssetDatabase.LoadAssetAtPath<Sprite>(Fuente3D + "/AtomAR_Simbolo3D.png");
+
     // ───────── Composiciones ─────────
     static void Simbolo(RectTransform padre, Vector2 pos, float tam, bool sobreClaro)
     {
         var go = new GameObject("Simbolo", typeof(RectTransform));
         var rt = (RectTransform)go.transform; rt.SetParent(padre, false);
         rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(tam, tam);
-        var d = go.AddComponent<DibujoUI>(); d.figura = "logo"; d.animado = false; d.sobreClaro = sobreClaro; d.raycastTarget = false;
+        var img = go.AddComponent<Image>(); img.sprite = Simbolo3D; img.preserveAspect = true; img.raycastTarget = false;
     }
 
     static void Nombre(RectTransform padre, TMP_FontAsset fuente, Color color, Vector2 pos, Vector2 tam, float tamLetra, TextAlignmentOptions al)
